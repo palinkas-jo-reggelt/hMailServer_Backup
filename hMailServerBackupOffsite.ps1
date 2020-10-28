@@ -24,7 +24,6 @@
 
 Function OffsiteUpload {
 
-	$UploadSuccess = $False
 	$BeginOffsiteUpload = Get-Date
 	Debug "----------------------------"
 	Debug "Begin offsite upload process"
@@ -140,6 +139,7 @@ Function OffsiteUpload {
 				$UURL = $Upload.data.url
 				$USize = $Upload.data.size
 				$UStatus = $Upload._status
+				Debug "Upload try $UploadTries"
 				Debug "Response : $UResponse"
 				Debug "URL      : $UURL"
 				Debug "Size     : $USize"
@@ -147,8 +147,8 @@ Function OffsiteUpload {
 				Debug "Finished uploading file in $(ElapsedTime $BeginUpload)"
 			} 
 			Catch {
-				Debug "Upload try $A"
-				Debug "[ERROR] : $Error"
+				Debug "Upload try $UploadTries"
+				Debug "[ERROR]  : $Error"
 			}
 			$UploadTries++
 		} Until (($UploadTries -eq ($MaxUploadTries + 1)) -or ($UStatus -match "success"))
@@ -161,15 +161,50 @@ Function OffsiteUpload {
 		}
 		$UploadCounter++
 	}
-
-	<#  Finish up  #>
 	Debug "----------------------------"
-	Debug "Finished uploading $CountArchVol files in $(ElapsedTime $StartUpload)"
-	Debug "Upload sucessful. $CountArchVol files uploaded to $FolderURL"
 	Debug "Finished offsite upload process in $(ElapsedTime $BeginOffsiteUpload)"
-	Email "* Offsite upload of backup archive completed successfully"
-	Email "[INFO] $CountArchVol files uploaded to $FolderURL"
-	Email " "
-	If ($UploadCounter -eq $CountArchVol) {$UploadSuccess = $True}
+	
+	<#  Count remote files  #>
+	Debug "----------------------------"
+	Debug "Counting uploaded files at LetsUpload"
+	$URIFL = "https://letsupload.io/api/v2/folder/listing"
+	$FLBody = @{
+		'access_token' = $AccessToken;
+		'account_id' = $AccountID;
+		'parent_folder_id' = $FolderID;
+	}
+	Try {
+		$FolderListing = Invoke-RestMethod -Method GET $URIFL -Body $FLBody -ContentType 'application/json; charset=utf-8' 
+	}
+	Catch {
+		Debug "LetsUpload Folder Listing ERROR : $Error"
+		Email "[ERROR] LetsUpload Folder Listing : Check Debug Log"
+		Email "[ERROR] LetsUpload Folder Listing : $Error"
+	}
+	$FolderListingStatus = $FolderListing._status
+	$RemoteFileCount = ($FolderListing.data.files.id).Count
+	
+	<#  Finish up  #>
+	If ($FolderListingStatus -match "success") {
+		Debug "There are $RemoteFileCount files in the remote folder"
+		If ($RemoteFileCount -eq $CountArchVol) {
+			Debug "----------------------------"
+			Debug "Finished uploading $CountArchVol files in $(ElapsedTime $StartUpload)"
+			Debug "Upload sucessful. $CountArchVol files uploaded to $FolderURL"
+			Email "* Offsite upload of backup archive completed successfully"
+			Email "[INFO] $CountArchVol files uploaded to $FolderURL"
+		} Else {
+			Debug "----------------------------"
+			Debug "Finished uploading in $(ElapsedTime $StartUpload)"
+			Debug "[ERROR] Number of archive files uploaded does not match count in remote folder"
+			Debug "[ERROR] Archive volumes   : $CountArchVol"
+			Debug "[ERROR] Remote file count : $RemoteFileCount"
+			Email "[ERROR] Number of archive files uploaded does not match count in remote folder - see debug log"
+		}
+	} Else {
+		Debug "----------------------------"
+		Debug "Error : Unable to obtain file count from remote folder"
+		Email "[ERROR] Unable to obtain uploaded file count from remote folder - see debug log"
+	}
 
 }

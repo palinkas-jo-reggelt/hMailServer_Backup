@@ -86,7 +86,6 @@ ServiceStop $hMSServiceName
 If ($UseSA) {ServiceStop $SAServiceName}
 
 <#  Update SpamAssassin  #>
-$SAUpdateSuccess = $False
 If ($UseSA) {
 	Debug "----------------------------"
 	Debug "Updating SpamAssassin"
@@ -101,7 +100,6 @@ If ($UseSA) {
 		If ($SAUpdate -match "Update finished, no fresh updates were available"){
 			Email "[INFO] No fresh SpamAssassin updates available"
 		}
-		$SAUpdateSuccess = $True
 	}
 	Catch {
 		Debug "SpamAssassin update ERROR : $Error"
@@ -132,7 +130,6 @@ If ($UseSA) {
 <#  Backup files using RoboCopy  #>
 Debug "----------------------------"
 Debug "Start backing up datadir with RoboCopy"
-$RoboSuccess = $False
 $BeginRobocopy = Get-Date
 Try {
 	$RoboCopy = & robocopy $MailDataDir "$BackupTempDir\hMailData" /mir /ndl /r:43200 /np /w:1 | Out-String
@@ -147,7 +144,6 @@ Try {
 	}
 	Email "* hMailServer DataDir successfully backed up"
 	Email "[INFO] RoboCopy Stats: $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
-	$RoboSuccess = $True
 }
 Catch {
 	Debug "RoboCopy ERROR : $Error"
@@ -155,7 +151,7 @@ Catch {
 	Email "[ERROR] RoboCopy : $Error"
 }
 
-$DBDumpSuccess = $False
+<#  Backup database files  #>
 $BeginDBBackup = Get-Date
 If ($UseMySQL) {
 	Remove-Item "$BackupTempDir\hMailData\*.mysql"
@@ -165,9 +161,9 @@ If ($UseMySQL) {
 	$MySQLDump = "$MySQLBINdir\mysqldump.exe"
 	$MySQLDumpPass = "-p$MySQLPass"
 	Try {
-		& $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer > "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).mysql"
+		$DumpIt = & $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer > "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).mysql" | Out-String
+		Debug $DumpIt
 		Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
-		$DBDumpSuccess = $True
 	}
 	Catch {
 		Debug "MySQL Dump ERROR : $Error"
@@ -178,10 +174,9 @@ If ($UseMySQL) {
 	Debug "----------------------------"
 	Debug "Copy internal database to backup folder"
 	Try {
-		$RoboCopy = & robocopy "$hMSDir\Database" "$BackupTempDir\hMailData" /mir /ndl /r:43200 /np /w:1 | Out-String
-		Debug $RoboCopy
+		$RoboCopyIDB = & robocopy "$hMSDir\Database" "$BackupTempDir\hMailData" /mir /ndl /r:43200 /np /w:1 | Out-String
+		Debug $RoboCopyIDB
 		Debug "Internal DB successfully backed up in $(ElapsedTime $BeginDBBackup)"
-		$DBDumpSuccess = $True
 	}
 	Catch {
 		Debug "RoboCopy Internal DB ERROR : $Error"
@@ -198,20 +193,37 @@ ServiceStart $hMSServiceName
 $FilesToDel = Get-ChildItem -Path $BackupLocation  | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeep))}
 $CountDel = $FilesToDel.Count
 If ($CountDel -gt 0) {
-	Debug "Deleting $CountDel items older than $DaysToKeep days"
 	Debug "----------------------------"
-	Email "* Older archives successfully deleted : $CountDel "
-}
-$FilesToDel | ForEach {
-	$FullName = $_.FullName
-	$Name = $_.Name
-	If (Test-Path $_.FullName -PathType Container) {
-		Remove-Item -Force -Recurse -Path $FullName
-		Debug "Deleting folder: $Name"
+	Debug "Deleting $CountDel items older than $DaysToKeep days"
+	$EnumCountDel = 0
+	Try {
+		$FilesToDel | ForEach {
+			$FullName = $_.FullName
+			$Name = $_.Name
+			If (Test-Path $_.FullName -PathType Container) {
+				Remove-Item -Force -Recurse -Path $FullName
+				Debug "Deleting folder: $Name"
+				$EnumCountDel++
+			}
+			If (Test-Path $_.FullName -PathType Leaf) {
+				Remove-Item -Force -Path $FullName
+				Debug "Deleting file  : $Name"
+				$EnumCountDel++
+			}
+		}
+		If ($CountDel -eq $EnumCountDel) {
+			Debug "Successfully deleted $CountDel items"
+			Email "* Older archives successfully deleted : $CountDel "
+		} Else {
+			Debug "Delete old backups ERROR : Filecount does not match delete count"
+			Email "[ERROR] Delete old backups : Filecount does not match delete count"
+			Email "[ERROR] Delete old backups : Check Debug Log"
+		}
 	}
-	If (Test-Path $_.FullName -PathType Leaf) {
-		Remove-Item -Force -Path $FullName
-		Debug "Deleting file  : $Name"
+	Catch {
+		Debug "Delete old backups ERROR : $Error"
+		Email "[ERROR] Delete old backups : Check Debug Log"
+		Email "[ERROR] Delete old backups : $Error"
 	}
 }
 
@@ -226,17 +238,7 @@ MakeArchive
 OffsiteUpload
 
 <#  Finish up and send email  #>
-Debug "Backup & Upload routine completed in $(ElapsedTime $StartScript)"
-Email "Backup & Upload routine completed in $(ElapsedTime $StartScript)"
-If ($UseSA) {
-	If (($hMSServiceStop) -and ($SAServiceStop) -and ($SAUpdateSuccess) -and ($RoboSuccess) -and ($DBDumpSuccess) -and ($SAServiceStart) -and ($hMSServiceStart) -and ($MakeArchiveSuccess) -and ($UploadSuccess)) {
-		Debug "All operations successful. No errors"
-		Email "All operations successful. No errors"
-	}
-} Else {
-	If (($hMSServiceStop) -and ($RoboSuccess) -and ($DBDumpSuccess) -and ($hMSServiceStart) -and ($MakeArchiveSuccess) -and ($UploadSuccess)) {
-		Debug "All operations successful. No errors"
-		Email "All operations successful. No errors"
-	}
-}
+Debug "hMailServer Backup & Upload routine completed in $(ElapsedTime $StartScript)"
+Email " "
+Email "hMailServer Backup & Upload routine completed in $(ElapsedTime $StartScript)"
 EmailResults

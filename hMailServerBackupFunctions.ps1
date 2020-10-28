@@ -94,8 +94,6 @@ Function ServiceStart ($ServiceName) {
 	Debug "----------------------------"
 	Debug "Start $ServiceDescription"
 	$ServiceStopped = $False
-	$hMSServiceStart = $False
-	$SAServiceStart = $False
 	(Get-Service $ServiceName).Refresh()
 	If ((Get-Service $ServiceName).Status -eq 'Running'){
 		Debug "$ServiceDescription already RUNNING. Nothing to start."
@@ -111,7 +109,7 @@ Function ServiceStart ($ServiceName) {
 		$BeginStartup = Get-Date
 		Do {
 			Start-Service $ServiceName
-			Start-Sleep -Seconds 60
+			# Start-Sleep -Seconds 60
 			(Get-Service $ServiceName).Refresh()
 			$ServiceStatus = (Get-Service $ServiceName).Status
 		} Until (((New-Timespan -Start $BeginStartup -End (Get-Date)).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Running"))
@@ -123,8 +121,6 @@ Function ServiceStart ($ServiceName) {
 		} Else {
 			Debug "$ServiceDescription successfully started"
 			Email "* $ServiceDescription successfully started"
-			If ($ServiceDescription -eq $hMSServiceName) {$hMSServiceStart = $True}
-			If ($ServiceDescription -eq $SAServiceName) {$SAServiceStart = $True}
 		}
 	}
 }
@@ -136,8 +132,6 @@ Function ServiceStop ($ServiceName) {
 	Debug "----------------------------"
 	Debug "Stop $ServiceDescription"
 	$ServiceRunning = $False
-	$hMSServiceStop = $False
-	$SAServiceStop = $False
 	(Get-Service $ServiceName).Refresh()
 	If ((Get-Service $ServiceName).Status -eq 'Stopped'){
 		Debug "$ServiceDescription already STOPPED. Nothing to stop. Check event logs."
@@ -153,7 +147,7 @@ Function ServiceStop ($ServiceName) {
 		$BeginShutdown = Get-Date
 		Do {
 			Stop-Service $ServiceName
-			Start-Sleep -Seconds 60
+			# Start-Sleep -Seconds 60
 			(Get-Service $ServiceName).Refresh()
 			$ServiceStatus = (Get-Service $ServiceName).Status
 		} Until (((New-Timespan $BeginShutdown).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Stopped"))
@@ -165,27 +159,24 @@ Function ServiceStop ($ServiceName) {
 		} Else {
 			Debug "$ServiceDescription successfully stopped"
 			Email "* $ServiceDescription successfully stopped"
-			If ($ServiceDescription -eq $hMSServiceName) {$hMSServiceStop = $True}
-			If ($ServiceDescription -eq $SAServiceName) {$SAServiceStop = $True}
 		}
 	}
 }
 
 Function MakeArchive {
 	$StartArchive = Get-Date
-	$MakeArchiveSuccess = $False
 	Debug "----------------------------"
 	Debug "Create archive : $BackupName"
 	Debug "Archive folder : $BackupTempDir"
 	$VolumeSwitch = "-v$VolumeSize"
 	$PWSwitch = "-p$ArchivePassword"
 	Try {
-		& cmd /c 7z a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*"
+		$SevenZip = & cmd /c 7z a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
+		Debug $SevenZip
 		Debug "Archive creation finished in $(ElapsedTime $StartArchive)"
 		Debug "Wait a few seconds to make sure archive is finished"
 		Email "* 7-Zip archive of backup files creation successful"
 		Start-Sleep -Seconds 3
-		$MakeArchiveSuccess = $True
 	}
 	Catch {
 		Debug "Archive Creation ERROR : $Error"
