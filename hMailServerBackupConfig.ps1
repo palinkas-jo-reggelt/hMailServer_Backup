@@ -26,7 +26,7 @@
 $VerboseConsole    = $True                  # If true, will output debug to console
 $VerboseFile       = $True                  # If true, will output debug to file
 $UseSA             = $True                  # Specifies whether SpamAssassin is in use
-$DaysToKeep        = 5                      # Number of days to keep backups - all others will be deleted at end of script
+$DaysToKeep        = 5                      # Number of days to keep backups - older backups will be deleted at end of script
 
 <###   FOLDER LOCATIONS   ###>
 $hMSDir            = "C:\Program Files (x86)\hMailServer"  # hMailServer Install Directory
