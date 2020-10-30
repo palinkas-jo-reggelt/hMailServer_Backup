@@ -37,6 +37,10 @@ Function OffsiteUpload {
 	}
 	Try{
 		$Auth = Invoke-RestMethod -Method GET $URIAuth -Body $AuthBody -ContentType 'application/json; charset=utf-8' 
+		$AccessToken = $Auth.data.access_token
+		$AccountID = $Auth.data.account_id
+		Debug "Access Token : $AccessToken"
+		Debug "Account ID   : $AccountID"
 	}
 	Catch {
 		Debug "LetsUpload Authentication ERROR : $Error"
@@ -45,10 +49,6 @@ Function OffsiteUpload {
 		EmailResults
 		Exit
 	}
-	$AccessToken = $Auth.data.access_token
-	$AccountID = $Auth.data.account_id
-	Debug "Access Token : $AccessToken"
-	Debug "Account ID   : $AccountID"
 
 	<#  Create Folder  #>
 	Debug "----------------------------"
@@ -62,6 +62,12 @@ Function OffsiteUpload {
 	}
 	Try {
 		$CreateFolder = Invoke-RestMethod -Method GET $URICF -Body $CFBody -ContentType 'application/json; charset=utf-8' 
+		$CFResponse = $CreateFolder.response
+		$FolderID = $CreateFolder.data.id
+		$FolderURL = $CreateFolder.data.url_folder
+		Debug "Response   : $CFResponse"
+		Debug "Folder ID  : $FolderID"
+		Debug "Folder URL : $FolderURL"
 	}
 	Catch {
 		Debug "LetsUpload Folder Creation ERROR : $Error"
@@ -70,11 +76,6 @@ Function OffsiteUpload {
 		EmailResults
 		Exit
 	}
-	$CreateFolder.response
-	$FolderID = $CreateFolder.data.id
-	$FolderURL = $CreateFolder.data.url_folder
-	Debug "Folder ID  : $FolderID"
-	Debug "Folder URL : $FolderURL"
 
 	<#  Upload Files  #>
 	$StartUpload = Get-Date
@@ -139,6 +140,7 @@ Function OffsiteUpload {
 				$UResponse = $Upload.response
 				$UURL = $Upload.data.url
 				$USize = $Upload.data.size
+				$USizeFormatted = "{0,8:N2}" -f (($USize)/1MB)
 				$UStatus = $Upload._status
 				$UFileID = $upload.data.file_id
 				If ($USize -ne $FileSize) {Throw "Local and remote filesizes do not match!"}
@@ -146,7 +148,7 @@ Function OffsiteUpload {
 				Debug "Response : $UResponse"
 				Debug "File ID  : $UFileID"
 				Debug "URL      : $UURL"
-				Debug "Size     : $(($USize/1MB).ToString('#,###.##')) MB"
+				Debug "Size     : $USizeFormatted mb"
 				Debug "Status   : $UStatus"
 				Debug "Finished uploading file in $(ElapsedTime $BeginUpload)"
 			} 
