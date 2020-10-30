@@ -231,9 +231,9 @@ Function DeleteOldMessages {
 	$CountArrayTotalCount = $ArrayTotalCount.Count
 	Debug "Finished deleting $CountArrayTotalCount messages in $(ElapsedTime $BeginDeletingOldMessages)"
 	If ($CountArrayTotalCount -gt 0) {
-		Email "* Deleted $CountArrayTotalCount messages in specified folders older than $DaysBeforeDelete days successfully"
+		Email "* Deleted $CountArrayTotalCount messages older than $DaysBeforeDelete days successfully"
 	} Else {
-		Email "* No messages in specified folders older than $DaysBeforeDelete days to delete"
+		Email "* No messages older than $DaysBeforeDelete days to delete"
 	}
 
 } # END FUNCTION

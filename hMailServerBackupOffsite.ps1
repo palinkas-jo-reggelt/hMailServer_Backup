@@ -88,6 +88,7 @@ Function OffsiteUpload {
 
 		$FileName = $_.Name;
 		$FilePath = $_.FullName;
+		$FileSize = $_.Length;
 		
 		$UploadURI = "https://letsupload.io/api/v2/file/upload";
 		Debug "----------------------------"
@@ -139,23 +140,41 @@ Function OffsiteUpload {
 				$UURL = $Upload.data.url
 				$USize = $Upload.data.size
 				$UStatus = $Upload._status
+				$UFileID = $upload.data.file_id
+				If ($USize -ne $FileSize) {Throw "Local and remote filesizes do not match!"}
 				Debug "Upload try $UploadTries"
 				Debug "Response : $UResponse"
+				Debug "File ID  : $UFileID"
 				Debug "URL      : $UURL"
-				Debug "Size     : $USize"
+				Debug "Size     : $(($USize/1MB).ToString('#,###.##')) MB"
 				Debug "Status   : $UStatus"
 				Debug "Finished uploading file in $(ElapsedTime $BeginUpload)"
 			} 
 			Catch {
 				Debug "Upload try $UploadTries"
 				Debug "[ERROR]  : $Error"
+				If (($USize -gt 0) -and ($UFileID -match '\d+')) {
+					Debug "Deleting file due to size mismatch"
+					$URIDF = "https://letsupload.io/api/v2/file/delete"
+					$DFBody = @{
+						'access_token' = $AccessToken;
+						'account_id' = $AccountID;
+						'file_id' = $UFileID;
+					}
+					Try {
+						$DeleteFile = Invoke-RestMethod -Method GET $URIDF -Body $DFBody -ContentType 'application/json; charset=utf-8' 
+					}
+					Catch {
+						Debug "File delete ERROR : $Error"
+					}
+				}
 			}
 			$UploadTries++
 		} Until (($UploadTries -eq ($MaxUploadTries + 1)) -or ($UStatus -match "success"))
 
 		If (-not($UStatus -Match "success")) {
-			Debug "Error in uploading file number $N. Check the log for errors."
-			Email "[ERROR] in uploading file number $N. Check the log for errors."
+			Debug "Error in uploading file number $UploadCounter. Check the log for errors."
+			Email "[ERROR] in uploading file number $UploadCounter. Check the log for errors."
 			EmailResults
 			Exit
 		}
@@ -184,15 +203,15 @@ Function OffsiteUpload {
 	$FolderListingStatus = $FolderListing._status
 	$RemoteFileCount = ($FolderListing.data.files.id).Count
 	
-	<#  Finish up  #>
+	<#  Report results  #>
 	If ($FolderListingStatus -match "success") {
 		Debug "There are $RemoteFileCount files in the remote folder"
 		If ($RemoteFileCount -eq $CountArchVol) {
 			Debug "----------------------------"
 			Debug "Finished uploading $CountArchVol files in $(ElapsedTime $StartUpload)"
 			Debug "Upload sucessful. $CountArchVol files uploaded to $FolderURL"
-			Email "* Offsite upload of backup archive completed successfully"
-			Email "[INFO] $CountArchVol files uploaded to $FolderURL"
+			Email "* Offsite upload of backup archive completed successfully:"
+			Email "* $CountArchVol files uploaded to $FolderURL"
 		} Else {
 			Debug "----------------------------"
 			Debug "Finished uploading in $(ElapsedTime $StartUpload)"

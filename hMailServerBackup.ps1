@@ -68,15 +68,18 @@ $hMS = New-Object -COMObject hMailServer.Application
 $hMS.Authenticate("Administrator", $hMSAdminPass) | Out-Null
 
 <#  Get hMailServer Status  #>
+$BootTime = [DateTime]::ParseExact((((Get-WmiObject -Class win32_operatingsystem).LastBootUpTime).Split(".")[0]), 'yyyyMMddHHmmss', $null)
 $hMSStartTime = $hMS.Status.StartTime
 $hMSSpamCount = $hMS.Status.RemovedSpamMessages
 $hMSVirusCount = $hMS.Status.RemovedViruses
-Debug "HMS Server Start Time           : $hMSStartTime"
+Debug "Last Reboot Time: $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
+Debug "HMS Start Time                  : $hMSStartTime"
 Debug "HMS Daily Spam Reject count     : $hMSSpamCount"
 Debug "HMS Daily Viruses Removed count : $hMSVirusCount"
 Email ":::   hMailServer Backup Routine $(Get-Date -f D)   :::"
 Email " "
-Email "HMS Server Start Time: $hMSStartTime"
+Email "Last Reboot Time: $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
+Email "HMS Start Time: $hMSStartTime"
 Email "HMS Daily Spam Reject count: $hMSSpamCount"
 Email "HMS Daily Viruses Removed count: $hMSVirusCount"
 Email " "
@@ -142,8 +145,7 @@ Try {
 		$Failed = $_.Failed
 		$Extras = $_.Extras
 	}
-	Email "* hMailServer DataDir successfully backed up"
-	Email "[INFO] RoboCopy Stats: $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
+	Email "* hMailServer DataDir successfully backed up: $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
 }
 Catch {
 	Debug "RoboCopy ERROR : $Error"
