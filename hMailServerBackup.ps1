@@ -72,7 +72,7 @@ $BootTime = [DateTime]::ParseExact((((Get-WmiObject -Class win32_operatingsystem
 $hMSStartTime = $hMS.Status.StartTime
 $hMSSpamCount = $hMS.Status.RemovedSpamMessages
 $hMSVirusCount = $hMS.Status.RemovedViruses
-Debug "Last Reboot Time: $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
+Debug "Last Reboot Time                : $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
 Debug "HMS Start Time                  : $hMSStartTime"
 Debug "HMS Daily Spam Reject count     : $hMSSpamCount"
 Debug "HMS Daily Viruses Removed count : $hMSVirusCount"
@@ -99,15 +99,15 @@ If ($UseSA) {
 		$SAUpdate = & $SAUD -v --nogpg --channelfile $SACF | Out-String
 		Debug $SAUpdate
 		Debug "Finished updating SpamAssassin in $(ElapsedTime $BeginSAUpdate)"
-		Email "* SpamAssassin successfully updated"
+		Email "[OK] SpamAssassin successfully updated"
 		If ($SAUpdate -match "Update finished, no fresh updates were available"){
 			Email "[INFO] No fresh SpamAssassin updates available"
 		}
 	}
 	Catch {
 		Debug "SpamAssassin update ERROR : $Error"
-		Email "SpamAssassin update ERROR : Check Debug Log"
-		Email "SpamAssassin update ERROR : $Error"
+		Email "[ERROR] SpamAssassin update : Check Debug Log"
+		Email "[ERROR] SpamAssassin update : $Error"
 	}
 }
 
@@ -145,7 +145,8 @@ Try {
 		$Failed = $_.Failed
 		$Extras = $_.Extras
 	}
-	Email "* hMailServer DataDir successfully backed up: $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
+	Email "[OK] hMailServer DataDir successfully backed up"
+	Email "[INFO] $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
 }
 Catch {
 	Debug "RoboCopy ERROR : $Error"
@@ -156,15 +157,23 @@ Catch {
 <#  Backup database files  #>
 $BeginDBBackup = Get-Date
 If ($UseMySQL) {
-	Remove-Item "$BackupTempDir\hMailData\*.mysql"
 	Debug "----------------------------"
+	Debug "Begin backing up MySQL"
 	Debug "Deleting old MySQL database dump"
+	Try {
+		Remove-Item "$BackupTempDir\hMailData\*.mysql"
+		Debug "Old MySQL database successfully deleted"
+	}
+	Catch {
+		Debug "Old MySQL database delete ERROR : $Error"
+		Email "[ERROR] Old MySQL database delete : Check Debug Log"
+		Email "[ERROR] Old MySQL database delete : $Error"
+	}
 	Debug "Backing up MySQL"
 	$MySQLDump = "$MySQLBINdir\mysqldump.exe"
 	$MySQLDumpPass = "-p$MySQLPass"
 	Try {
-		$DumpIt = & $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer > "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).mysql" | Out-String
-		Debug $DumpIt
+		& $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer > "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).mysql" | Out-String
 		Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
 	}
 	Catch {
@@ -174,6 +183,7 @@ If ($UseMySQL) {
 	}
 } Else {
 	Debug "----------------------------"
+	Debug "Begin backing up internal database"
 	Debug "Copy internal database to backup folder"
 	Try {
 		$RoboCopyIDB = & robocopy "$hMSDir\Database" "$BackupTempDir\hMailData" /mir /ndl /r:43200 /np /w:1 | Out-String
@@ -196,7 +206,7 @@ $FilesToDel = Get-ChildItem -Path $BackupLocation  | Where-Object {$_.LastWriteT
 $CountDel = $FilesToDel.Count
 If ($CountDel -gt 0) {
 	Debug "----------------------------"
-	Debug "Deleting $CountDel items older than $DaysToKeep days"
+	Debug "Begin deleting local backups older than $DaysToKeep days"
 	$EnumCountDel = 0
 	Try {
 		$FilesToDel | ForEach {
@@ -215,7 +225,7 @@ If ($CountDel -gt 0) {
 		}
 		If ($CountDel -eq $EnumCountDel) {
 			Debug "Successfully deleted $CountDel items"
-			Email "* Older archives successfully deleted : $CountDel "
+			Email "[OK] Archives older than $DaysToKeep successfully deleted"
 		} Else {
 			Debug "Delete old backups ERROR : Filecount does not match delete count"
 			Email "[ERROR] Delete old backups : Filecount does not match delete count"

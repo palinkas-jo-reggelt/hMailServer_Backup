@@ -1,24 +1,21 @@
 <#
 
 .SYNOPSIS
-	hMailServer Backup
+	Prune Messages
 
 .DESCRIPTION
 	Delete messages in specified folders older than N days
 
 .FUNCTIONALITY
-	Backs up hMailServer, compresses backup and uploads to LetsUpload
+	Looks for folder name match at highest folder level and if found, deletes all messages older than N days within that folder, subfolders, sub-sub folders and sub-sub-sub folders
 
 .PARAMETER 
 
 	
 .NOTES
-	7-Zip required - install and place in system path
-	Run at 12:58PM from task scheduler
-	
+	Folder name matching only occurs at top level folders
 	
 .EXAMPLE
-
 
 #>
 
@@ -231,9 +228,9 @@ Function DeleteOldMessages {
 	$CountArrayTotalCount = $ArrayTotalCount.Count
 	Debug "Finished deleting $CountArrayTotalCount messages in $(ElapsedTime $BeginDeletingOldMessages)"
 	If ($CountArrayTotalCount -gt 0) {
-		Email "* Deleted $CountArrayTotalCount messages older than $DaysBeforeDelete days successfully"
+		Email "[OK] Deleted $CountArrayTotalCount messages older than $DaysBeforeDelete days successfully"
 	} Else {
-		Email "* No messages older than $DaysBeforeDelete days to delete"
+		Email "[OK] No messages older than $DaysBeforeDelete days to delete"
 	}
 
 } # END FUNCTION

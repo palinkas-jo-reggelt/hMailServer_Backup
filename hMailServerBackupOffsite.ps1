@@ -212,8 +212,8 @@ Function OffsiteUpload {
 			Debug "----------------------------"
 			Debug "Finished uploading $CountArchVol files in $(ElapsedTime $StartUpload)"
 			Debug "Upload sucessful. $CountArchVol files uploaded to $FolderURL"
-			Email "* Offsite upload of backup archive completed successfully:"
-			Email "* $CountArchVol files uploaded to $FolderURL"
+			Email "[OK] Offsite upload of backup archive completed successfully:"
+			Email "[INFO] $CountArchVol files uploaded to $FolderURL"
 		} Else {
 			Debug "----------------------------"
 			Debug "Finished uploading in $(ElapsedTime $StartUpload)"

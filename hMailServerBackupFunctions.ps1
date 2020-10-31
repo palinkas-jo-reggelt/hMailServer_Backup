@@ -67,7 +67,7 @@ Function GmailResults ($GBody){
 Function ValidateFolders ($Folder) {
 	If (-not(Test-Path $Folder)) {
 		Debug "Error : Folder location $Folder does not exist : Quitting script"
-		Email "Error : Folder location $Folder does not exist : Quitting script"
+		Email "[ERROR] Folder location $Folder does not exist : Quitting script"
 		EmailResults
 		Exit
 	}
@@ -91,6 +91,7 @@ Function ServiceStart ($ServiceName) {
 	<#  Check to see if already running  #>
 	If ($ServiceName -eq $hMSServiceName) {$ServiceDescription = "hMailServer"}
 	If ($ServiceName -eq $SAServiceName) {$ServiceDescription = "SpamAssassin"}
+	$BeginStartupRoutine = Get-Date
 	Debug "----------------------------"
 	Debug "Start $ServiceDescription"
 	$ServiceStopped = $False
@@ -119,8 +120,8 @@ Function ServiceStart ($ServiceName) {
 			GmailResults "$ServiceDescription failed to start during backup routine! Check status NOW!"
 			Break
 		} Else {
-			Debug "$ServiceDescription successfully started"
-			Email "* $ServiceDescription successfully started"
+			Debug "$ServiceDescription successfully started in $(ElapsedTime $BeginStartupRoutine)"
+			Email "[OK] $ServiceDescription successfully started"
 		}
 	}
 }
@@ -129,6 +130,7 @@ Function ServiceStop ($ServiceName) {
 	<#  Check to see if already stopped  #>
 	If ($ServiceName -eq $hMSServiceName) {$ServiceDescription = "hMailServer"}
 	If ($ServiceName -eq $SAServiceName) {$ServiceDescription = "SpamAssassin"}
+	$BeginShutdownRoutine = Get-Date
 	Debug "----------------------------"
 	Debug "Stop $ServiceDescription"
 	$ServiceRunning = $False
@@ -157,8 +159,8 @@ Function ServiceStop ($ServiceName) {
 			GmailResults "$ServiceDescription failed to stop during backup routine! Check status NOW!"
 			Break
 		} Else {
-			Debug "$ServiceDescription successfully stopped"
-			Email "* $ServiceDescription successfully stopped"
+			Debug "$ServiceDescription successfully stopped in $(ElapsedTime $BeginShutdownRoutine)"
+			Email "[OK] $ServiceDescription successfully stopped"
 		}
 	}
 }
@@ -175,7 +177,7 @@ Function MakeArchive {
 		Debug $SevenZip
 		Debug "Archive creation finished in $(ElapsedTime $StartArchive)"
 		Debug "Wait a few seconds to make sure archive is finished"
-		Email "* 7-Zip archive of backup files creation successful"
+		Email "[OK] 7-Zip archive of backup files creation successful"
 		Start-Sleep -Seconds 3
 	}
 	Catch {
