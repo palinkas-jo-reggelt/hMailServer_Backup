@@ -45,8 +45,11 @@ $SAServiceName     = "spamassassin"         # Name of SpamAssassin Service (chec
 $ServiceTimeout    = 5                      # number of minutes to continue trying if service start or stop commands become unresponsive
 
 <###   CLEANUP FOLDERS VARIABLES   ###>
-$DaysBeforeDelete  = 30                     # Number of days to keep messages in cleanup folders - all older messages will be deleted
-$CleanupFolders    = "Trash|Deleted|Junk|Spam|Lists|HMS-backup|BankNotices"  # Names of IMAP folders you want to cleanup - uses regex matching
+$DoDelete              = $True              # FOR TESTING - set to false to run and report results without deleting messages and folders
+$PruneSubFolders       = $True              # True will prune all folders in levels below name matching folders
+$DeleteEmptySubFolders = $True              # True will delete empty subfolders below the matching level unless a subfolder within contains messages
+$DaysBeforeDelete      = 30                 # Number of days to keep messages in pruned folders
+$PruneFolders          = "Trash|Deleted|Junk|Spam|2020-[01][0-9]-[0-3][0-9]$|Unsubscribes"  # Names of IMAP folders you want to cleanup - uses regex
 
 <###   MySQL VARIABLES   ###>
 $UseMySQL          = $True                  # Specifies whether database used is MySQL
