@@ -145,8 +145,9 @@ Try {
 		$Failed = $_.Failed
 		$Extras = $_.Extras
 	}
-	Email "[OK] hMailServer DataDir successfully backed up"
-	Email "[INFO] $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
+	Debug "[OK] $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
+	Email "[OK] hMailServer DataDir successfully backed up:"
+	Email "[OK] $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
 }
 Catch {
 	Debug "RoboCopy ERROR : $Error"
@@ -197,6 +198,32 @@ If ($UseMySQL) {
 	}
 }
 
+<#  Backup hMailServer.ini  #>
+$BeginINIBackup = Get-Date
+Debug "----------------------------"
+Debug "Begin backing up hMailServer.ini"
+Debug "Deleting old MySQL database dump"
+Try {
+	Remove-Item "$BackupTempDir\hMailData\*.ini"
+	Debug "Old hMailServer.ini successfully deleted"
+}
+Catch {
+	Debug "Old hMailServer.ini delete ERROR : $Error"
+	Email "[ERROR] Old hMailServer.ini delete : Check Debug Log"
+	Email "[ERROR] Old hMailServer.ini delete : $Error"
+}
+Debug "Backing up hMailServer.ini"
+Try {
+	$RoboCopyINI = & robocopy "$hMSDir\Bin\hMailServer.INI" "$BackupTempDir\hMailData" /mir /ndl /r:43200 /np /w:1 | Out-String
+	Debug $RoboCopyINI
+	Debug "hMailServer.ini successfully backed up in $(ElapsedTime $BeginINIBackup)"
+}
+Catch {
+	Debug "RoboCopy hMailServer.ini ERROR : $Error"
+	Email "[ERROR] RoboCopy hMailServer.ini : Check Debug Log"
+	Email "[ERROR] RoboCopy hMailServer.ini : $Error"
+}
+
 <#  Restart SpamAssassin and hMailServer  #>
 If ($UseSA) {ServiceStart $SAServiceName}
 ServiceStart $hMSServiceName
@@ -225,7 +252,7 @@ If ($CountDel -gt 0) {
 		}
 		If ($CountDel -eq $EnumCountDel) {
 			Debug "Successfully deleted $CountDel items"
-			Email "[OK] Archives older than $DaysToKeep successfully deleted"
+			Email "[OK] Archives older than $DaysToKeep days successfully deleted"
 		} Else {
 			Debug "Delete old backups ERROR : Filecount does not match delete count"
 			Email "[ERROR] Delete old backups : Filecount does not match delete count"
@@ -239,7 +266,7 @@ If ($CountDel -gt 0) {
 	}
 }
 
-<#  Delete trash/spam older than N number of days  #>
+<#  Delete messages/empty folders older than N number of days  #>
 DeleteOldMessages
 
 <#  Compress backup into 7z archives  #>

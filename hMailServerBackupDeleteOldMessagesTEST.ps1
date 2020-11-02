@@ -23,8 +23,33 @@
 
 #>
 
+<###   USER VARIABLES   ###>
+$hMSAdminPass          = "secretpassword" # hMailServer Admin password
+$DoDelete              = $False           # FOR TESTING - set to false to run and report results without deleting messages and folders
+$PruneSubFolders       = $True            # True will prune all folders in levels below name matching folders
+$DeleteEmptySubFolders = $True            # True will delete empty subfolders below the matching level unless a subfolder within contains messages
+$DaysBeforeDelete      = 30               # Number of days to keep messages in pruned folders
+$PruneFolders          = "2nd level test|2020-[0-1][0-9]-[0-3][0-9]$|Trash|Deleted|Junk|Spam|Unsubscribes"  # Names of IMAP folders you want to cleanup - uses regex
+
+$Error.Clear()
+
 Set-Variable -Name TotalDeletedMessages -Value 0 -Option AllScope
 Set-Variable -Name TotalDeletedFolders -Value 0 -Option AllScope
+
+Function Debug ($DebugOutput) {Write-Host $DebugOutput}
+
+Function ElapsedTime ($EndTime) {
+	$TimeSpan = New-Timespan $EndTime
+	If (([int]($TimeSpan).Hours) -eq 0) {$Hours = ""} ElseIf (([int]($TimeSpan).Hours) -eq 1) {$Hours = "1 hour "} Else {$Hours = "$([int]($TimeSpan).Hours) hours "}
+	If (([int]($TimeSpan).Minutes) -eq 0) {$Minutes = ""} ElseIf (([int]($TimeSpan).Minutes) -eq 1) {$Minutes = "1 minute "} Else {$Minutes = "$([int]($TimeSpan).Minutes) minutes "}
+	If (([int]($TimeSpan).Seconds) -eq 1) {$Seconds = "1 second"} Else {$Seconds = "$([int]($TimeSpan).Seconds) seconds"}
+	If (($TimeSpan).TotalSeconds -lt 1) {
+		$Return = "less than 1 second"
+	} Else {
+		$Return = "$Hours$Minutes$Seconds"
+	}
+	Return $Return
+}
 
 Function GetSubFolders ($Folder) {
 	$IterateFolder = 0
@@ -177,16 +202,15 @@ Function DeleteOldMessages {
 		$EnumDomain++
 	} Until ($EnumDomain -eq $hMS.Domains.Count)
 
-	If (($TotalDeletedMessages -gt 0) {
-		Debug "Finished deleting $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
-		Email "[OK] Finished deleting $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+	If ($TotalDeletedMessages -gt 0) {
+		Debug "[OK] Finished deleting $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
 	} Else {
-		Debug "No messages older than $DaysBeforeDelete days to delete"
-		Email "[OK] No messages older than $DaysBeforeDelete days to delete"
+		Debug "[OK] No messages older than $DaysBeforeDelete days to delete"
 	}
 	If ($TotalDeletedFolders -gt 0) {
-		Debug "Deleted $TotalDeletedFolders empty subfolders"
-		Email "[OK] Deleted $TotalDeletedFolders empty subfolders"
+		Debug "[OK] Deleted $TotalDeletedFolders empty subfolders"
 	}
 
-}
+} # END FUNCTION
+
+DeleteOldMessages
