@@ -1,4 +1,4 @@
-# hMailServer_Offsite_Backup
+# hMailServer Offsite Backup
  hMailServer backup routine that also uploads to LetsUpload.io
  
 # What does it do?
