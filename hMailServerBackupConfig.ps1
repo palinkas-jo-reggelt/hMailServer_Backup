@@ -44,7 +44,7 @@ $hMSServiceName    = "hMailServer"          # Name of hMailServer Service (check
 $SAServiceName     = "spamassassin"         # Name of SpamAssassin Service (check windows services to verify exact spelling)
 $ServiceTimeout    = 5                      # number of minutes to continue trying if service start or stop commands become unresponsive
 
-<###   CLEANUP FOLDERS VARIABLES   ###>
+<###   PRUNE MESSAGES VARIABLES   ###>
 $DoDelete              = $True              # FOR TESTING - set to false to run and report results without deleting messages and folders
 $PruneSubFolders       = $True              # True will prune all folders in levels below name matching folders
 $DeleteEmptySubFolders = $True              # True will delete empty subfolders below the matching level unless a subfolder within contains messages
