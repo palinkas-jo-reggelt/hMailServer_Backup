@@ -26,8 +26,6 @@
 Try {
 	.("$PSScriptRoot\hMailServerBackupConfig.ps1")
 	.("$PSScriptRoot\hMailServerBackupFunctions.ps1")
-	.("$PSScriptRoot\hMailServerBackupDeleteOldMessages.ps1")
-	.("$PSScriptRoot\hMailServerBackupOffsite.ps1")
 }
 Catch {
 	Write-Output "$(Get-Date) -f G) : ERROR : Unable to load supporting PowerShell Scripts : $query $Error" | out-file "$PSScriptRoot\PSError.log" -append
@@ -267,7 +265,7 @@ If ($CountDel -gt 0) {
 }
 
 <#  Delete messages/empty folders older than N number of days  #>
-DeleteOldMessages
+PruneMessages
 
 <#  Compress backup into 7z archives  #>
 $BackupName = "$DateString-hMailServer"
