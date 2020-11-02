@@ -25,6 +25,8 @@
 
 Set-Variable -Name TotalDeletedMessages -Value 0 -Option AllScope
 Set-Variable -Name TotalDeletedFolders -Value 0 -Option AllScope
+Set-Variable -Name DeleteMessageErrors -Value 0 -Option AllScope
+Set-Variable -Name DeleteFolderErrors -Value 0 -Option AllScope
 
 Function GetSubFolders ($Folder) {
 	$IterateFolder = 0
@@ -54,6 +56,7 @@ Function GetSubFolders ($Folder) {
 					Debug "Deleted empty subfolder $FolderName in $AccountAddress"
 				}
 				Catch {
+					$DeleteFolderErrors++
 					Debug "[ERROR] Deleting empty subfolder $FolderName in $AccountAddress"
 					Debug "[ERROR] : $Error"
 				}
@@ -102,19 +105,18 @@ Function GetMatchFolders ($Folder) {
 
 Function GetMessages ($Folder) {
 	$IterateMessage = 0
-	$ArrayDeletedMessages = @()
+	$ArrayMessagesToDelete = @()
 	$DeletedMessages = 0
 	If ($Folder.Messages.Count -gt 0) {
 		Do {
 			$Message = $Folder.Messages.Item($IterateMessage)
 			If ($Message.InternalDate -lt ((Get-Date).AddDays(-$DaysBeforeDelete))) {
-				$ArrayDeletedMessages += $Message.ID
-				$ArrayCountDeletedMessages += $Message.ID
+				$ArrayMessagesToDelete += $Message.ID
 			}
 			$IterateMessage++
 		} Until ($IterateMessage -eq $Folder.Messages.Count)
 	}
-	$ArrayDeletedMessages | ForEach {
+	$ArrayMessagesToDelete | ForEach {
 		$AFolderName = $Folder.Name
 		Try {
 			If ($DoDelete) {$Folder.Messages.DeleteByDBID($_)}
@@ -122,6 +124,7 @@ Function GetMessages ($Folder) {
 			$TotalDeletedMessages++
 		}
 		Catch {
+			$DeleteMessageErrors++
 			Debug "[ERROR] Deleting messages from folder $AFolderName in $AccountAddress"
 			Debug "[ERROR] $Error"
 		}
@@ -130,7 +133,7 @@ Function GetMessages ($Folder) {
 	If ($DeletedMessages -gt 0) {
 		Debug "Deleted $DeletedMessages messages from $AFolderName in $AccountAddress"
 	}
-	$ArrayDeletedMessages.Clear()
+	$ArrayMessagesToDelete.Clear()
 }
 
 Function DeleteOldMessages {
@@ -146,47 +149,60 @@ Function DeleteOldMessages {
 	$hMS = New-Object -COMObject hMailServer.Application
 	$hMS.Authenticate("Administrator", $hMSAdminPass) | Out-Null
 	
-	$EnumDomain = 0
-	
+	$IterateDomains = 0
 	Do {
-		$hMSDomain = $hMS.Domains.Item($EnumDomain)
+		$hMSDomain = $hMS.Domains.Item($IterateDomains)
 		If ($hMSDomain.Active) {
-			$EnumAccount = 0
+			$IterateAccounts = 0
 			Do {
-				$hMSAccount = $hMSDomain.Accounts.Item($EnumAccount)
+				$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
 				If ($hMSAccount.Active) {
 					$AccountAddress = $hMSAccount.Address
-					$EnumFolder = 0
+					$IterateIMAPFolders = 0
 					If ($hMSAccount.IMAPFolders.Count -gt 0) {
 						Do {
-							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($EnumFolder)
+							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
 							If ($hMSIMAPFolder.Name -match [regex]$PruneFolders) {
 								If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
 									GetSubFolders $hMSIMAPFolder
 								} # IF SUBFOLDER COUNT > 0
 								GetMessages $hMSIMAPFolder
 							} # IF FOLDERNAME MATCH REGEX
-							Else {GetMatchFolders $hMSIMAPFolder}
-						$EnumFolder++
-						} Until ($EnumFolder -eq $hMSAccount.IMAPFolders.Count)
+							Else {
+								GetMatchFolders $hMSIMAPFolder
+							} # IF NOT FOLDERNAME MATCH REGEX
+						$IterateIMAPFolders++
+						} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
 					} # IF IMAPFOLDER COUNT > 0
 				} #IF ACCOUNT ACTIVE
-				$EnumAccount++
-			} Until ($EnumAccount -eq $hMSDomain.Accounts.Count)
+				$IterateAccounts++
+			} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
 		} # IF DOMAIN ACTIVE
-		$EnumDomain++
-	} Until ($EnumDomain -eq $hMS.Domains.Count)
+		$IterateDomains++
+	} Until ($IterateDomains -eq $hMS.Domains.Count)
 
-	If (($TotalDeletedMessages -gt 0) {
-		Debug "Finished deleting $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
-		Email "[OK] Finished deleting $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+	If ($DeleteMessageErrors -gt 0) {
+		Debug "Finished Message Pruning : $DeleteMessageErrors Errors present"
+		Email "[ERROR] Message Pruning : $DeleteMessageErrors Errors present : Check debug log"
 	} Else {
-		Debug "No messages older than $DaysBeforeDelete days to delete"
-		Email "[OK] No messages older than $DaysBeforeDelete days to delete"
+		If ($TotalDeletedMessages -gt 0) {
+			Debug "Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+			Email "[OK] Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+		} Else {
+			Debug "No messages older than $DaysBeforeDelete days to prune"
+			Email "[OK] No messages older than $DaysBeforeDelete days to prune"
+		}
 	}
-	If ($TotalDeletedFolders -gt 0) {
-		Debug "Deleted $TotalDeletedFolders empty subfolders"
-		Email "[OK] Deleted $TotalDeletedFolders empty subfolders"
+	If ($DeleteFolderErrors -gt 0) {
+		Debug "Deleting Empty Folders : $DeleteFolderErrors Errors present"
+		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Errors present : Check debug log"
+	} Else {
+		If ($TotalDeletedFolders -gt 0) {
+			Debug "Deleted $TotalDeletedFolders empty subfolders"
+			Email "[OK] Deleted $TotalDeletedFolders empty subfolders"
+		} Else {
+			Debug "No empty subfolders deleted"
+			Email "[OK] No empty subfolders deleted"
+		}
 	}
-
 }
