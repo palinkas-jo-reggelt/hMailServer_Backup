@@ -249,7 +249,7 @@ If ($CountDel -gt 0) {
 			}
 		}
 		If ($CountDel -eq $EnumCountDel) {
-			Debug "Successfully deleted $CountDel items"
+			Debug "Successfully deleted $CountDel item$(Plural $CountDel)"
 			Email "[OK] Archives older than $DaysToKeep days successfully deleted"
 		} Else {
 			Debug "Delete old backups ERROR : Filecount does not match delete count"

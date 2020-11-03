@@ -33,6 +33,11 @@ Function Email ($EmailOutput) {
 	Write-Output $EmailOutput | Out-File $EmailBody -Encoding ASCII -Append
 }
 
+Function Plural ($Integer) {
+	If ($Integer -eq 1) {$S = ""} Else {$S = "s"}
+	Return $S
+}
+
 Function EmailResults {
 	Try {
 		$Body = (Get-Content -Path $EmailBody | Out-String )
@@ -304,7 +309,7 @@ Function GetMessages ($Folder) {
 		$Error.Clear()
 	}
 	If ($DeletedMessages -gt 0) {
-		Debug "Deleted $DeletedMessages messages from $AFolderName in $AccountAddress"
+		Debug "Deleted $DeletedMessages message$(Plural $DeletedMessages) from $AFolderName in $AccountAddress"
 	}
 	$ArrayMessagesToDelete.Clear()
 }
@@ -360,20 +365,20 @@ Function PruneMessages {
 		Email "[ERROR] Message Pruning : $DeleteMessageErrors Errors present : Check debug log"
 	} Else {
 		If ($TotalDeletedMessages -gt 0) {
-			Debug "Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
-			Email "[OK] Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+			Debug "Finished pruning $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
+			Email "[OK] Finished pruning $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
 		} Else {
 			Debug "No messages older than $DaysBeforeDelete days to prune"
 			Email "[OK] No messages older than $DaysBeforeDelete days to prune"
 		}
 	}
 	If ($DeleteFolderErrors -gt 0) {
-		Debug "Deleting Empty Folders : $DeleteFolderErrors Errors present"
-		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Errors present : Check debug log"
+		Debug "Deleting Empty Folders : $DeleteFolderErrors Error$(Plural $DeleteFolderErrors) present"
+		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Error$(Plural $DeleteFolderErrors) present : Check debug log"
 	} Else {
 		If ($TotalDeletedFolders -gt 0) {
-			Debug "Deleted $TotalDeletedFolders empty subfolders"
-			Email "[OK] Deleted $TotalDeletedFolders empty subfolders"
+			Debug "Finished deleting $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
+			Email "[OK] Deleted $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
 		} Else {
 			Debug "No empty subfolders deleted"
 			Email "[OK] No empty subfolders deleted"
@@ -568,13 +573,13 @@ Function OffsiteUpload {
 	
 	<#  Report results  #>
 	If ($FolderListingStatus -match "success") {
-		Debug "There are $RemoteFileCount files in the remote folder"
+		Debug "There are $RemoteFileCount file$(Plural $RemoteFileCount) in the remote folder"
 		If ($RemoteFileCount -eq $CountArchVol) {
 			Debug "----------------------------"
-			Debug "Finished uploading $CountArchVol files in $(ElapsedTime $StartUpload)"
-			Debug "Upload sucessful. $CountArchVol files uploaded to $FolderURL"
+			Debug "Finished uploading $CountArchVol file$(Plural $CountArchVol) in $(ElapsedTime $StartUpload)"
+			Debug "Upload sucessful. $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
 			Email "[OK] Offsite upload of backup archive completed successfully:"
-			Email "[OK] $CountArchVol files uploaded to $FolderURL"
+			Email "[OK] $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
 		} Else {
 			Debug "----------------------------"
 			Debug "Finished uploading in $(ElapsedTime $StartUpload)"

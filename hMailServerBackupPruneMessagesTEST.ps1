@@ -46,6 +46,10 @@ Function ElapsedTime ($EndTime) {
 	}
 	Return $Return
 }
+Function Plural ($Integer) {
+	If ($Integer -eq 1) {$S = ""} Else {$S = "s"}
+	Return $S
+}
 
 <#  Begin hMailServerBackupPruneMessages  #>
 
@@ -157,7 +161,7 @@ Function GetMessages ($Folder) {
 		$Error.Clear()
 	}
 	If ($DeletedMessages -gt 0) {
-		Debug "Deleted $DeletedMessages messages from $AFolderName in $AccountAddress"
+		Debug "Deleted $DeletedMessages message$(Plural $DeletedMessages) from $AFolderName in $AccountAddress"
 	}
 	$ArrayMessagesToDelete.Clear()
 }
@@ -213,20 +217,20 @@ Function PruneMessages {
 		Email "[ERROR] Message Pruning : $DeleteMessageErrors Errors present : Check debug log"
 	} Else {
 		If ($TotalDeletedMessages -gt 0) {
-			Debug "Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
-			Email "[OK] Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+			Debug "Finished pruning $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
+			Email "[OK] Finished pruning $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
 		} Else {
 			Debug "No messages older than $DaysBeforeDelete days to prune"
 			Email "[OK] No messages older than $DaysBeforeDelete days to prune"
 		}
 	}
 	If ($DeleteFolderErrors -gt 0) {
-		Debug "Deleting Empty Folders : $DeleteFolderErrors Errors present"
-		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Errors present : Check debug log"
+		Debug "Deleting Empty Folders : $DeleteFolderErrors Error$(Plural $DeleteFolderErrors) present"
+		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Error$(Plural $DeleteFolderErrors) present : Check debug log"
 	} Else {
 		If ($TotalDeletedFolders -gt 0) {
-			Debug "Deleted $TotalDeletedFolders empty subfolders"
-			Email "[OK] Deleted $TotalDeletedFolders empty subfolders"
+			Debug "Finished deleting $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
+			Email "[OK] Deleted $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
 		} Else {
 			Debug "No empty subfolders deleted"
 			Email "[OK] No empty subfolders deleted"
