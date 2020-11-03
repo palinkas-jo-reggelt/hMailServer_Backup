@@ -187,7 +187,7 @@ Function MakeArchive {
 		Debug $SevenZip
 		Debug "Archive creation finished in $(ElapsedTime $StartArchive)"
 		Debug "Wait a few seconds to make sure archive is finished"
-		Email "[OK] 7-Zip archive of backup files creation successful"
+		Email "[OK] 7z archive created successfully"
 		Start-Sleep -Seconds 3
 	}
 	Catch {

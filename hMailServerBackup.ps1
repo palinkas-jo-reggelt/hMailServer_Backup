@@ -29,11 +29,14 @@ Try {
 }
 Catch {
 	Write-Output "$(Get-Date) -f G) : ERROR : Unable to load supporting PowerShell Scripts : $query $Error" | out-file "$PSScriptRoot\PSError.log" -append
+	Exit
 }
 
 <###   BEGIN SCRIPT   ###>
 $StartScript = Get-Date
 $DateString = (Get-Date).ToString("yyyy-MM-dd")
+$BackupName = "$DateString-hMailServer"
+
 
 <#  Clear out error variable  #>
 $Error.Clear()
@@ -42,7 +45,7 @@ $Error.Clear()
 $EmailBody = "$PSScriptRoot\EmailBody.log"
 If (Test-Path $EmailBody) {Remove-Item -Force -Path $EmailBody}
 New-Item $EmailBody
-$DebugLog = "$BackupLocation\hMailServerDebug-$((Get-Date).ToString('yyyy-MM-dd')).log"
+$DebugLog = "$BackupLocation\hMailServerDebug-$DateString.log"
 If (Test-Path $DebugLog) {Remove-Item -Force -Path $DebugLog}
 New-Item $DebugLog
 Write-Output "::: hMailServer Backup Routine $(Get-Date -f D) :::" | Out-File $DebugLog -Encoding ASCII -Append
@@ -74,7 +77,8 @@ Debug "Last Reboot Time                : $(($BootTime).ToString('yyyy-MM-dd HH:m
 Debug "HMS Start Time                  : $hMSStartTime"
 Debug "HMS Daily Spam Reject count     : $hMSSpamCount"
 Debug "HMS Daily Viruses Removed count : $hMSVirusCount"
-Email ":::   hMailServer Backup Routine $(Get-Date -f D)   :::"
+Email ":::   hMailServer Backup Routine   :::"
+Email ":::   $(Get-Date -f D)   :::"
 Email " "
 Email "Last Reboot Time: $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
 Email "HMS Start Time: $hMSStartTime"
@@ -200,26 +204,26 @@ If ($UseMySQL) {
 $BeginINIBackup = Get-Date
 Debug "----------------------------"
 Debug "Begin backing up hMailServer.ini"
-Debug "Deleting old MySQL database dump"
-Try {
-	Remove-Item "$BackupTempDir\hMailData\*.ini"
+Debug "Deleting old backup copy of hMailServer.ini"
+If (Test-Path "$BackupTempDir\hMailData\hMailServer.ini") {
+	Remove-Item "$BackupTempDir\hMailData\hMailServer.ini"
 	Debug "Old hMailServer.ini successfully deleted"
+} Else {
+	Debug "No old backup copy of hMailServer.ini exists"
 }
-Catch {
-	Debug "Old hMailServer.ini delete ERROR : $Error"
-	Email "[ERROR] Old hMailServer.ini delete : Check Debug Log"
-	Email "[ERROR] Old hMailServer.ini delete : $Error"
-}
-Debug "Backing up hMailServer.ini"
-Try {
-	$RoboCopyINI = & robocopy "$hMSDir\Bin\hMailServer.INI" "$BackupTempDir\hMailData" /mir /ndl /r:43200 /np /w:1 | Out-String
-	Debug $RoboCopyINI
-	Debug "hMailServer.ini successfully backed up in $(ElapsedTime $BeginINIBackup)"
-}
-Catch {
-	Debug "RoboCopy hMailServer.ini ERROR : $Error"
-	Email "[ERROR] RoboCopy hMailServer.ini : Check Debug Log"
-	Email "[ERROR] RoboCopy hMailServer.ini : $Error"
+Debug "Backing up server copy of hMailServer.ini"
+If (Test-Path "$hMSDir\Bin\hMailServer.INI") {
+	Try {
+		Copy-Item -Path "$hMSDir\Bin\hMailServer.INI" -Destination "$BackupTempDir\hMailData"
+		Debug "hMailServer.ini successfully backed up"
+	}
+	Catch {
+		Debug "hMailServer.ini Backup ERROR : $Error"
+		Email "[ERROR] Backup hMailServer.ini : Check Debug Log"
+		Email "[ERROR] Backup hMailServer.ini : $Error"
+	}
+} Else {
+	Debug "hMailServer.ini copy ERROR : File path not validated"
 }
 
 <#  Restart SpamAssassin and hMailServer  #>
@@ -250,7 +254,7 @@ If ($CountDel -gt 0) {
 		}
 		If ($CountDel -eq $EnumCountDel) {
 			Debug "Successfully deleted $CountDel item$(Plural $CountDel)"
-			Email "[OK] Archives older than $DaysToKeep days successfully deleted"
+			Email "[OK] Deleted backups older than $DaysToKeep days successfully"
 		} Else {
 			Debug "Delete old backups ERROR : Filecount does not match delete count"
 			Email "[ERROR] Delete old backups : Filecount does not match delete count"
@@ -268,7 +272,6 @@ If ($CountDel -gt 0) {
 PruneMessages
 
 <#  Compress backup into 7z archives  #>
-$BackupName = "$DateString-hMailServer"
 MakeArchive
 
 <#  Upload archive to LetsUpload.io  #>
