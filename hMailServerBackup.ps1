@@ -130,21 +130,56 @@ If ($UseSA) {
 }
 
 <#  Cycle Logs  #>
-Debug "----------------------------"
-Debug "Cycling Logs"
-If (Test-Path "$hMSDir\Logs\hmailserver_events.log") {
-	Try {Rename-Item "$hMSDir\Logs\hmailserver_events.log" "hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"} 
-	Catch {Debug "SpamAssassin update ERROR : $Error"}
-	Debug "Cylcled hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"
-} Else {
-	Debug "hmailserver_events.log not found"
-}
-If ($UseSA) {
-	If (Test-Path "$hMSDir\Logs\spamd.log") {
-		Try {Rename-Item "$hMSDir\Logs\spamd.log" "spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"} Catch {Debug "SpamAssassin update ERROR : $Error"}
-		Debug "Cylcled spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"
+If ($CycleLogs) {
+	Debug "----------------------------"
+	Debug "Cycling Logs"
+	If (Test-Path "$hMSDir\Logs\hmailserver_events.log") {
+		Try {Rename-Item "$hMSDir\Logs\hmailserver_events.log" "hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"} 
+		Catch {Debug "SpamAssassin update ERROR : $Error"}
+		Debug "Cylcled hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"
 	} Else {
-		Debug "spamd.log not found"
+		Debug "hmailserver_events.log not found"
+	}
+	If ($UseSA) {
+		If (Test-Path "$hMSDir\Logs\spamd.log") {
+			Try {Rename-Item "$hMSDir\Logs\spamd.log" "spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"} Catch {Debug "SpamAssassin update ERROR : $Error"}
+			Debug "Cylcled spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"
+		} Else {
+			Debug "spamd.log not found"
+		}
+	}
+}
+
+<#  Prune hMailServer logs  #>
+If ($PruneLogs) {
+	$FilesToDel = Get-ChildItem -Path "$hMSDir\Logs"  | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepLogs))}
+	$CountDelLogs = (Test-Path $FilesToDel -PathType Leaf).Count
+	If ($CountDelLogs -gt 0) {
+		Debug "----------------------------"
+		Debug "Begin pruning hMailServer logs older than $DaysToKeepLogs days"
+		$EnumCountDelLogs = 0
+		Try {
+			$FilesToDel | ForEach {
+				$FullName = $_.FullName
+				$Name = $_.Name
+				If (Test-Path $_.FullName -PathType Leaf) {
+					Remove-Item -Force -Path $FullName
+					Debug "Deleted file  : $Name"
+					$EnumCountDelLogs++
+				}
+			}
+			If ($CountDelLogs -eq $EnumCountDelLogs) {
+				Debug "Successfully pruned $CountDelLogs hMailServer log$(Plural $CountDelLogs)"
+				Email "[OK] Pruned hMailServer logs older than $DaysToKeepLogs days"
+			} Else {
+				Debug "Prune hMailServer logs ERROR : Filecount does not match delete count"
+				Email "[ERROR] Prune hMailServer logs : Check Debug Log"
+			}
+		}
+		Catch {
+			Debug "Prune hMailServer logs ERROR : $Error"
+			Email "[ERROR] Prune hMailServer logs : Check Debug Log"
+		}
 	}
 }
 
@@ -250,39 +285,41 @@ If ($BackupSuccess -eq 2) {
 If ($UseSA) {ServiceStart $SAServiceName}
 ServiceStart $hMSServiceName
 
-<#  Delete old backups  #>
-$FilesToDel = Get-ChildItem -Path $BackupLocation  | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeep))}
-$CountDel = $FilesToDel.Count
-If ($CountDel -gt 0) {
-	Debug "----------------------------"
-	Debug "Begin deleting local backups older than $DaysToKeep days"
-	$EnumCountDel = 0
-	Try {
-		$FilesToDel | ForEach {
-			$FullName = $_.FullName
-			$Name = $_.Name
-			If (Test-Path $_.FullName -PathType Container) {
-				Remove-Item -Force -Recurse -Path $FullName
-				Debug "Deleting folder: $Name"
-				$EnumCountDel++
+<#  Prune backups  #>
+If ($PruneBackups) {
+	$FilesToDel = Get-ChildItem -Path $BackupLocation  | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepBackups))}
+	$CountDel = $FilesToDel.Count
+	If ($CountDel -gt 0) {
+		Debug "----------------------------"
+		Debug "Begin pruning local backups older than $DaysToKeepBackups days"
+		$EnumCountDel = 0
+		Try {
+			$FilesToDel | ForEach {
+				$FullName = $_.FullName
+				$Name = $_.Name
+				If (Test-Path $_.FullName -PathType Container) {
+					Remove-Item -Force -Recurse -Path $FullName
+					Debug "Deleted folder: $Name"
+					$EnumCountDel++
+				}
+				If (Test-Path $_.FullName -PathType Leaf) {
+					Remove-Item -Force -Path $FullName
+					Debug "Deleted file  : $Name"
+					$EnumCountDel++
+				}
 			}
-			If (Test-Path $_.FullName -PathType Leaf) {
-				Remove-Item -Force -Path $FullName
-				Debug "Deleting file  : $Name"
-				$EnumCountDel++
+			If ($CountDel -eq $EnumCountDel) {
+				Debug "Successfully pruned $CountDel item$(Plural $CountDel)"
+				Email "[OK] Pruned backups older than $DaysToKeepBackups days"
+			} Else {
+				Debug "Prune backups ERROR : Filecount does not match delete count"
+				Email "[ERROR] Prune backups : Check Debug Log"
 			}
 		}
-		If ($CountDel -eq $EnumCountDel) {
-			Debug "Successfully deleted $CountDel item$(Plural $CountDel)"
-			Email "[OK] Deleted backups older than $DaysToKeep days"
-		} Else {
-			Debug "Delete old backups ERROR : Filecount does not match delete count"
-			Email "[ERROR] Delete old backups : Check Debug Log"
+		Catch {
+			Debug "Prune backups ERROR : $Error"
+			Email "[ERROR] Prune backups : Check Debug Log"
 		}
-	}
-	Catch {
-		Debug "Delete old backups ERROR : $Error"
-		Email "[ERROR] Delete old backups : Check Debug Log"
 	}
 }
 

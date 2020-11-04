@@ -26,7 +26,8 @@
 $VerboseConsole    = $True                  # If true, will output debug to console
 $VerboseFile       = $True                  # If true, will output debug to file
 $UseSA             = $True                  # Specifies whether SpamAssassin is in use
-$DaysToKeep        = 5                      # Number of days to keep backups - older backups will be deleted at end of script
+$PruneBackups      = $True                  # If true, will delete local backups older than N days
+$DaysToKeepBackups = 5                      # Number of days to keep backups - older backups will be deleted at end of script
 
 <###   FOLDER LOCATIONS   ###>
 $hMSDir            = "C:\Program Files (x86)\hMailServer"  # hMailServer Install Directory
@@ -66,6 +67,11 @@ $ArchivePassword   = "Unfloored1Commended0" # Password to 7z archive
 $APIKey1           = "1QFMyGCDgCH7BKG6ZKhxmUvAl98abP4bYiJ16iJTtLYZopqycRZJpndpca6ZgByT"
 $APIKey2           = "Fky8b24HpzuYhPeXmZO8m1pe6vqcxluodasRtF1C6dnShutYkpguAlJYAWd7JgiB"
 $IsPublic          = 0                      # 0 = Private, 1 = Unlisted, 2 = Public in LetsUpload.io site search
+
+<###   HMAILSERVER LOG VARIABLES   ###>
+$CycleLogs         = $True                  # Cycle SpamAssassin and Event logs nightly
+$PruneLogs         = $True                  # If true, will delete logs in hMailServer \Logs folder older than N days
+$DaysToKeepLogs    = 10                     # Number of days to keep old hMailServer Logs
 
 <###   EMAIL VARIABLES   ###>
 $EmailFrom         = "notify@mydomain.tld"
