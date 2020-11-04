@@ -55,7 +55,7 @@ If ($UseHTML) {
 	<!DOCTYPE html PUBLIC `"-//W3C//DTD XHTML 1.0 Transitional//EN`" `"https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd`">
 	<html xmlns=`"https://www.w3.org/1999/xhtml`">
 	<head>
-	<title>Test Email Sample</title>
+	<title>hMailServer Backup & Offsite Upload</title>
 	<meta name=`"viewport`" content=`"width=device-width, initial-scale=1.0 `" />
 	</head>
 	<body style=`"font-family:Arial Narrow`">
@@ -85,23 +85,37 @@ $BootTime = [DateTime]::ParseExact((((Get-WmiObject -Class win32_operatingsystem
 $hMSStartTime = $hMS.Status.StartTime
 $hMSSpamCount = $hMS.Status.RemovedSpamMessages
 $hMSVirusCount = $hMS.Status.RemovedViruses
-Debug "Last Reboot Time                : $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
-Debug "HMS Start Time                  : $hMSStartTime"
-Debug "HMS Daily Spam Reject count     : $hMSSpamCount"
-Debug "HMS Daily Viruses Removed count : $hMSVirusCount"
+Debug "Last Reboot Time          : $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
+Debug "HMS Start Time            : $hMSStartTime"
+Debug "HMS Daily Spam Reject     : $hMSSpamCount"
+Debug "HMS Daily Viruses Removed : $hMSVirusCount"
 If ($UseHTML) {
 	Email "<center>:::&nbsp;&nbsp;&nbsp;hMailServer Backup Routine&nbsp;&nbsp;&nbsp;:::</center>"
 	Email "<center>$(Get-Date -f D)</center>"
+	Email " "
+	Email "Last Reboot Time: $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
+	Email "HMS Start Time: $hMSStartTime"
+	If ($hMSSpamCount -gt 0) {
+		Email "HMS Daily Spam Reject count: <span style=`"background-color:red;color:white;font-weight:bold;font-family:Courier New;`">$hMSSpamCount</span>"
+	} Else {
+		Email "HMS Daily Spam Reject count: 0"
+	}
+	If ($hMSVirusCount -gt 0) {
+		Email "HMS Daily Viruses Removed count: <span style=`"background-color:red;color:white;font-weight:bold;font-family:Courier New;`">$hMSVirusCount</span>"
+	} Else {
+		Email "HMS Daily Viruses Removed count: 0"
+	}
+	Email " "
 } Else {
 	Email ":::   hMailServer Backup Routine   :::"
 	Email "       $(Get-Date -f D)"
+	Email " "
+	Email "Last Reboot Time: $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
+	Email "HMS Start Time: $hMSStartTime"
+	Email "HMS Daily Spam Reject count: $hMSSpamCount"
+	Email "HMS Daily Viruses Removed count: $hMSVirusCount"
+	Email " "
 }
-Email " "
-Email "Last Reboot Time: $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
-Email "HMS Start Time: $hMSStartTime"
-Email "HMS Daily Spam Reject count: $hMSSpamCount"
-Email "HMS Daily Viruses Removed count: $hMSVirusCount"
-Email " "
 
 <#  Stop hMailServer & SpamAssassin services #>
 ServiceStop $hMSServiceName

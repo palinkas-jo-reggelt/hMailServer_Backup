@@ -129,7 +129,7 @@ Function ServiceStart ($ServiceName) {
 			# Start-Sleep -Seconds 60
 			(Get-Service $ServiceName).Refresh()
 			$ServiceStatus = (Get-Service $ServiceName).Status
-		} Until (((New-Timespan -Start $BeginStartup -End (Get-Date)).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Running"))
+		} Until (((New-Timespan $BeginStartup).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Running"))
 
 		If ($ServiceStatus -ne "Running"){
 			Debug "$ServiceDescription failed to start"
