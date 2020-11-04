@@ -25,4 +25,4 @@
  Run hMailServerBackup.ps1 from task scheduler at 11:58 PM (time allows for properly cycling logs)
  
 # Notes
- Config switch $DeleteEmptySubFolders will delete empty subfolders found within matching message pruning folders. Use with caution. Run hMailServerBackupPruneMessagesTEST.ps1 with $DoDelete = FALSE to see how your system will react.
+ Config switch $DeleteEmptySubFolders will delete empty subfolders found within matching message pruning folders. Run hMailServerBackupPruneMessagesTEST.ps1 with $DoDelete = FALSE to see how your system will react.
