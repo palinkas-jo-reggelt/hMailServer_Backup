@@ -30,7 +30,15 @@ Function Debug ($DebugOutput) {
 }
 
 Function Email ($EmailOutput) {
-	Write-Output $EmailOutput | Out-File $EmailBody -Encoding ASCII -Append
+	If ($UseHTML){
+		If ($EmailOutput -match "\[OK\]") {$EmailOutput = $EmailOutput -Replace "\[OK\]","<span style=`"background-color:green;color:white;font-weight:bold;font-family:Courier New;`">[OK]</span>"}
+		If ($EmailOutput -match "\[INFO\]") {$EmailOutput = $EmailOutput -Replace "\[INFO\]","<span style=`"background-color:yellow;font-weight:bold;font-family:Courier New;`">[INFO]</span>"}
+		If ($EmailOutput -match "\[ERROR\]") {$EmailOutput = $EmailOutput -Replace "\[ERROR\]","<span style=`"background-color:red;color:white;font-weight:bold;font-family:Courier New;`">[ERROR]</span>"}
+		If ($EmailOutput -match "^\s$") {$EmailOutput = $EmailOutput -Replace "\s","&nbsp;"}
+		Write-Output "<tr><td>$EmailOutput</td></tr>" | Out-File $EmailBody -Encoding ASCII -Append
+	} Else {
+		Write-Output $EmailOutput | Out-File $EmailBody -Encoding ASCII -Append
+	}	
 }
 
 Function Plural ($Integer) {
@@ -43,7 +51,7 @@ Function EmailResults {
 		$Body = (Get-Content -Path $EmailBody | Out-String )
 		If (($AttachDebugLog) -and (Test-Path $DebugLog) -and (((Get-Item $DebugLog).length/1MB) -lt $MaxAttachmentSize)){$Attachment = New-Object System.Net.Mail.Attachment $DebugLog}
 		$Message = New-Object System.Net.Mail.Mailmessage $EmailFrom, $EmailTo, $Subject, $Body
-		$Message.IsBodyHTML = $HTML
+		$Message.IsBodyHTML = $UseHTML
 		If (($AttachDebugLog) -and (Test-Path $DebugLog) -and (((Get-Item $DebugLog).length/1MB) -lt $MaxAttachmentSize)){$Message.Attachments.Add($DebugLog)}
 		$SMTP = New-Object System.Net.Mail.SMTPClient $SMTPServer,$SMTPPort
 		$SMTP.EnableSsl = $SSL
@@ -129,7 +137,7 @@ Function ServiceStart ($ServiceName) {
 			Break
 		} Else {
 			Debug "$ServiceDescription successfully started in $(ElapsedTime $BeginStartupRoutine)"
-			Email "[OK] $ServiceDescription successfully started"
+			Email "[OK] $ServiceDescription started"
 		}
 	}
 }
@@ -168,7 +176,7 @@ Function ServiceStop ($ServiceName) {
 			Break
 		} Else {
 			Debug "$ServiceDescription successfully stopped in $(ElapsedTime $BeginShutdownRoutine)"
-			Email "[OK] $ServiceDescription successfully stopped"
+			Email "[OK] $ServiceDescription stopped"
 		}
 	}
 }
@@ -187,7 +195,7 @@ Function MakeArchive {
 		Debug $SevenZip
 		Debug "Archive creation finished in $(ElapsedTime $StartArchive)"
 		Debug "Wait a few seconds to make sure archive is finished"
-		Email "[OK] 7z archive created successfully"
+		Email "[OK] 7z archive created"
 		Start-Sleep -Seconds 3
 	}
 	Catch {
@@ -366,7 +374,7 @@ Function PruneMessages {
 	} Else {
 		If ($TotalDeletedMessages -gt 0) {
 			Debug "Finished pruning $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
-			Email "[OK] Finished pruning $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
+			Email "[OK] Pruned $TotalDeletedMessages message$(Plural $TotalDeletedMessages)"
 		} Else {
 			Debug "No messages older than $DaysBeforeDelete days to prune"
 			Email "[OK] No messages older than $DaysBeforeDelete days to prune"
@@ -381,7 +389,7 @@ Function PruneMessages {
 			Email "[OK] Deleted $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
 		} Else {
 			Debug "No empty subfolders deleted"
-			Email "[OK] No empty subfolders deleted"
+			Email "[OK] No empty subfolders to delete"
 		}
 	}
 }
@@ -578,7 +586,7 @@ Function OffsiteUpload {
 			Debug "----------------------------"
 			Debug "Finished uploading $CountArchVol file$(Plural $CountArchVol) in $(ElapsedTime $StartUpload)"
 			Debug "Upload sucessful. $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
-			Email "[OK] Offsite upload of backup archive completed successfully:"
+			Email "[OK] Offsite backup upload:"
 			Email "[OK] $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
 		} Else {
 			Debug "----------------------------"

@@ -75,8 +75,8 @@ $SMTPServer        = "mail.mydomain.tld"
 $SMTPAuthUser      = "notify@mydomain.tld"
 $SMTPAuthPass      = "supersecretpassword"
 $SMTPPort          =  587
-$SSL               = $True
-$HTML              = $False
+$SSL               = $True                  # If true, will use tls connection to send email
+$UseHTML           = $True                  # If true, will format and send email body as html (with color!)
 $AttachDebugLog    = $True                  # If true, will attach debug log to email report - must also select $VerboseFile
 $MaxAttachmentSize = 1                      # Size in MB
 
