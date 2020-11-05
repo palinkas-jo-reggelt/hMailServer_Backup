@@ -80,7 +80,7 @@ Function GmailResults ($GBody){
 
 Function ValidateFolders ($Folder) {
 	If (-not(Test-Path $Folder)) {
-		Debug "Error : Folder location $Folder does not exist : Quitting script"
+		Debug "[ERROR] Folder location $Folder does not exist : Quitting script"
 		Email "[ERROR] Folder location $Folder does not exist : Quitting script"
 		EmailResults
 		Exit
@@ -114,7 +114,7 @@ Function ServiceStart ($ServiceName) {
 	(Get-Service $ServiceName).Refresh()
 	If ((Get-Service $ServiceName).Status -eq 'Running'){
 		Debug "$ServiceDescription already RUNNING. Nothing to start."
-		Email "[ERROR] $ServiceDescription : service already RUNNING. Check event logs."
+		Email "[INFO] $ServiceDescription : service already RUNNING. Check event logs."
 	} Else {
 		Debug "$ServiceDescription not running. Preparing to start service."
 		$ServiceStopped = $True
@@ -153,7 +153,7 @@ Function ServiceStop ($ServiceName) {
 	(Get-Service $ServiceName).Refresh()
 	If ((Get-Service $ServiceName).Status -eq 'Stopped'){
 		Debug "$ServiceDescription already STOPPED. Nothing to stop. Check event logs."
-		Email "[ERROR] $ServiceDescription : service already STOPPED. Check event logs."
+		Email "[INFO] $ServiceDescription : service already STOPPED. Check event logs."
 	} Else {
 		Debug "$ServiceDescription running. Preparing to stop service."
 		$ServiceRunning = $True
@@ -199,7 +199,7 @@ Function MakeArchive {
 		Start-Sleep -Seconds 3
 	}
 	Catch {
-		Debug "Archive Creation ERROR : $Error"
+		Debug "[ERROR] Archive Creation : $Error"
 		Email "[ERROR] Archive Creation : Check Debug Log"
 		Email "[ERROR] Archive Creation : $Error"
 		EmailResults
@@ -373,7 +373,7 @@ Function PruneMessages {
 		Email "[ERROR] Message Pruning : $DeleteMessageErrors Errors present : Check debug log"
 	} Else {
 		If ($TotalDeletedMessages -gt 0) {
-			Debug "Finished pruning $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
+			Debug "Successfully pruned $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
 			Email "[OK] Pruned $TotalDeletedMessages message$(Plural $TotalDeletedMessages)"
 		} Else {
 			Debug "No messages older than $DaysBeforeDelete days to prune"
@@ -385,7 +385,7 @@ Function PruneMessages {
 		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Error$(Plural $DeleteFolderErrors) present : Check debug log"
 	} Else {
 		If ($TotalDeletedFolders -gt 0) {
-			Debug "Finished deleting $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
+			Debug "Successfully pruned $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
 			Email "[OK] Deleted $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
 		} Else {
 			Debug "No empty subfolders deleted"

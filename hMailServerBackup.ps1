@@ -41,6 +41,20 @@ $BackupName = "$DateString-hMailServer"
 <#  Clear out error variable  #>
 $Error.Clear()
 
+<#  Validate folders  #>
+$hMSDir = $hMSDir -Replace('\\$','')
+ValidateFolders $hMSDir
+$MailDataDir = $MailDataDir -Replace('\\$','')
+ValidateFolders $MailDataDir
+$BackupTempDir = $BackupTempDir -Replace('\\$','')
+ValidateFolders $BackupTempDir
+$BackupLocation = $BackupLocation -Replace('\\$','')
+ValidateFolders $BackupLocation
+$SADir = $SADir -Replace('\\$','')
+If ($UseSA) {ValidateFolders $SADir}
+$SAConfDir = $SAConfDir -Replace('\\$','')
+If ($UseSA) {ValidateFolders $SAConfDir}
+
 <#  Delete old debug files and create new  #>
 $EmailBody = "$PSScriptRoot\EmailBody.log"
 If (Test-Path $EmailBody) {Remove-Item -Force -Path $EmailBody}
@@ -62,19 +76,6 @@ If ($UseHTML) {
 	<table>
 	" | Out-File $EmailBody -Encoding ASCII -Append
 }
-
-<#  Validate folders  #>
-$hMSDir = $hMSDir -Replace('\\$','')
-ValidateFolders $hMSDir
-$MailDataDir = $MailDataDir -Replace('\\$','')
-ValidateFolders $MailDataDir
-$BackupTempDir = $BackupTempDir -Replace('\\$','')
-ValidateFolders $BackupTempDir -Replace('\\$','')
-$BackupLocation = $BackupLocation
-$SADir = $SADir -Replace('\\$','')
-If ($UseSA) {ValidateFolders $SADir}
-$SAConfDir = $SAConfDir -Replace('\\$','')
-If ($UseSA) {ValidateFolders $SAConfDir}
 
 <#  Authenticate hMailServer COM  #>
 $hMS = New-Object -COMObject hMailServer.Application
@@ -138,7 +139,7 @@ If ($UseSA) {
 		}
 	}
 	Catch {
-		Debug "SpamAssassin update ERROR : $Error"
+		Debug "[ERROR] SpamAssassin update : $Error"
 		Email "[ERROR] SpamAssassin update : Check Debug Log"
 	}
 }
@@ -186,12 +187,12 @@ If ($PruneLogs) {
 				Debug "Successfully pruned $CountDelLogs hMailServer log$(Plural $CountDelLogs)"
 				Email "[OK] Pruned hMailServer logs older than $DaysToKeepLogs days"
 			} Else {
-				Debug "Prune hMailServer logs ERROR : Filecount does not match delete count"
+				Debug "[ERROR] Prune hMailServer logs : Filecount does not match delete count"
 				Email "[ERROR] Prune hMailServer logs : Check Debug Log"
 			}
 		}
 		Catch {
-			Debug "Prune hMailServer logs ERROR : $Error"
+			Debug "[ERROR] Prune hMailServer logs : $Error"
 			Email "[ERROR] Prune hMailServer logs : Check Debug Log"
 		}
 	}
@@ -218,7 +219,7 @@ Try {
 	Email "[OK] $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
 }
 Catch {
-	Debug "RoboCopy ERROR : $Error"
+	Debug "[ERROR] RoboCopy : $Error"
 	Email "[ERROR] RoboCopy : Check Debug Log"
 }
 
@@ -233,7 +234,7 @@ If ($UseMySQL) {
 		Debug "Old MySQL database successfully deleted"
 	}
 	Catch {
-		Debug "Old MySQL database delete ERROR : $Error"
+		Debug "[ERROR] Old MySQL database delete : $Error"
 		Email "[ERROR] Old MySQL database delete : Check Debug Log"
 	}
 	Debug "Backing up MySQL"
@@ -245,7 +246,7 @@ If ($UseMySQL) {
 		Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
 	}
 	Catch {
-		Debug "MySQL Dump ERROR : $Error"
+		Debug "[ERROR] MySQL Dump : $Error"
 		Email "[ERROR] MySQL Dump : Check Debug Log"
 	}
 } Else {
@@ -259,7 +260,7 @@ If ($UseMySQL) {
 		Debug "Internal DB successfully backed up in $(ElapsedTime $BeginDBBackup)"
 	}
 	Catch {
-		Debug "RoboCopy Internal DB ERROR : $Error"
+		Debug "[ERROR] RoboCopy Internal DB : $Error"
 		Email "[ERROR] RoboCopy Internal DB : Check Debug Log"
 	}
 }
@@ -283,7 +284,7 @@ If (Test-Path "$hMSDir\Bin\hMailServer.INI") {
 		Debug "hMailServer.ini successfully backed up"
 	}
 	Catch {
-		Debug "hMailServer.ini Backup ERROR : $Error"
+		Debug "[ERROR] hMailServer.ini Backup : $Error"
 		Email "[ERROR] Backup hMailServer.ini : Check Debug Log"
 	}
 } Else {
@@ -326,12 +327,12 @@ If ($PruneBackups) {
 				Debug "Successfully pruned $CountDel item$(Plural $CountDel)"
 				Email "[OK] Pruned backups older than $DaysToKeepBackups days"
 			} Else {
-				Debug "Prune backups ERROR : Filecount does not match delete count"
+				Debug "[ERROR] Prune backups : Filecount does not match delete count"
 				Email "[ERROR] Prune backups : Check Debug Log"
 			}
 		}
 		Catch {
-			Debug "Prune backups ERROR : $Error"
+			Debug "[ERROR] Prune backups : $Error"
 			Email "[ERROR] Prune backups : Check Debug Log"
 		}
 	}
