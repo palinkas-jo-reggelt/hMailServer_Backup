@@ -13,27 +13,32 @@
 
 	
 .NOTES
-	7-Zip required - install and place in system path
-	Downloads files to folder $BackupLocation (set in Config) \hMailServer-Restoration
+	Fill in user variables below - not dependent on hMailServerBackupConfig.ps1
 	
 .EXAMPLE
 
 
 #>
 
-<###   CONFIG   ###>
-Try {
-	.("$PSScriptRoot\hMailServerBackupConfig.ps1")
-	.("$PSScriptRoot\hMailServerBackupFunctions.ps1")
-}
-Catch {
-	Write-Output "$(Get-Date) -f G) : ERROR : Unable to load supporting PowerShell Scripts" | out-file "$PSScriptRoot\PSError.log" -append
-	Write-Output "$(Get-Date) -f G) : ERROR : $Error" | out-file "$PSScriptRoot\PSError.log" -append
-	Exit
-}
+<###   FOLDER LOCATIONS   ###>
+$BackupLocation = "X:\HMS-BACKUP"       # Local folder that will contain downloaded files
+
+<###   LETSUPLOAD API VARIABLES   ###>
+$APIKey1 = "1QFMyGCDgCH7BKG6ZKhxmUvAl98abP4bYiJ16iJTtLYZopqycRZJpndpca6ZgByT"
+$APIKey2 = "Fky8b24HpzuYhPeXmZO8m1pe6vqcxluodasRtF1C6dnShutYkpguAlJYAWd7JgiB"
 
 <###   BEGIN SCRIPT   ###>
 $StartScript = Get-Date
+
+<#  Load required files  #>
+Try {
+	.("$PSScriptRoot\hMailServerBackupFunctions.ps1")
+}
+Catch {
+	Write-Output "$(Get-Date) -f G) : ERROR : Unable to load supporting PowerShell Scripts" | Out-File "$PSScriptRoot\PSError.log" -Append
+	Write-Output "$(Get-Date) -f G) : ERROR : $Error" | Out-File "$PSScriptRoot\PSError.log" -Append
+	Exit
+}
 
 <#  Clear out error variable  #>
 $Error.Clear()

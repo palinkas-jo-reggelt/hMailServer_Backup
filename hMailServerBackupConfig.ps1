@@ -63,7 +63,7 @@ $MySQLPort         = 3306                   # MySQL port
 $VolumeSize        = "100m"                 # Size of archive volume parts - maximum 200m recommended - valid suffixes for size units are (b|k|m|g)
 $ArchivePassword   = "Unfloored1Commended0" # Password to 7z archive
 
-<###   LETSUPLOAD VARIABLES   ###>
+<###   LETSUPLOAD API VARIABLES   ###>
 $APIKey1           = "1QFMyGCDgCH7BKG6ZKhxmUvAl98abP4bYiJ16iJTtLYZopqycRZJpndpca6ZgByT"
 $APIKey2           = "Fky8b24HpzuYhPeXmZO8m1pe6vqcxluodasRtF1C6dnShutYkpguAlJYAWd7JgiB"
 $IsPublic          = 0                      # 0 = Private, 1 = Unlisted, 2 = Public in LetsUpload.io site search
