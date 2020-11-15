@@ -130,7 +130,7 @@ If ($UseSA) {
 	$SAUD = "$SADir\sa-update.exe"
 	$SACF = "$SADir\UpdateChannels.txt"
 	Try {
-		$SAUpdate = & $SAUD -v --nogpg --channelfile $SACF | Out-String
+		$SAUpdate = & $SAUD -v --nogpg --channel updates.spamassassin.org | Out-String
 		Debug $SAUpdate
 		Debug "Finished updating SpamAssassin in $(ElapsedTime $BeginSAUpdate)"
 		Email "[OK] SpamAssassin updated"
@@ -214,6 +214,7 @@ Try {
 		$Failed = $_.Failed
 		$Extras = $_.Extras
 	}
+	$BackupSuccess++
 	Debug "Robocopy backup success: $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
 	Email "[OK] hMailServer DataDir backed up:"
 	Email "[OK] $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
@@ -230,7 +231,7 @@ If ($UseMySQL) {
 	Debug "Begin backing up MySQL"
 	Debug "Deleting old MySQL database dump"
 	Try {
-		Remove-Item "$BackupTempDir\hMailData\*.mysql"
+		Remove-Item "$BackupTempDir\hMailData\*.sql"
 		Debug "Old MySQL database successfully deleted"
 	}
 	Catch {
@@ -240,8 +241,9 @@ If ($UseMySQL) {
 	Debug "Backing up MySQL"
 	$MySQLDump = "$MySQLBINdir\mysqldump.exe"
 	$MySQLDumpPass = "-p$MySQLPass"
+	$MySQLDumpFile = "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).sql"
 	Try {
-		& $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer > "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).mysql" | Out-String
+		& $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer --result-file=$MySQLDumpFile | Out-String
 		$BackupSuccess++
 		Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
 	}
@@ -265,35 +267,40 @@ If ($UseMySQL) {
 	}
 }
 
-<#  Backup hMailServer.ini  #>
-$BeginINIBackup = Get-Date
+<#  Backup Miscellaneous Files  #>
 Debug "----------------------------"
-Debug "Begin backing up hMailServer.ini"
-Debug "Deleting old backup copy of hMailServer.ini"
-If (Test-Path "$BackupTempDir\hMailData\hMailServer.ini") {
-	Remove-Item -Force -Path "$BackupTempDir\hMailData\hMailServer.ini"
-	Debug "Old hMailServer.ini successfully deleted"
-} Else {
-	Debug "No old backup copy of hMailServer.ini exists"
-}
-Debug "Backing up server copy of hMailServer.ini"
-If (Test-Path "$hMSDir\Bin\hMailServer.INI") {
-	Try {
-		Copy-Item -Path "$hMSDir\Bin\hMailServer.INI" -Destination "$BackupTempDir\hMailData"
-		$BackupSuccess++
-		Debug "hMailServer.ini successfully backed up"
+Debug "Begin backing up miscellaneous files"
+Debug "Deleting old backup copy of miscellaneous files"
+$MiscBackupFiles | ForEach {
+	$MBUF = $_
+	$MBUFName = Split-Path -Path $MBUF -Leaf
+	If (Test-Path "$BackupTempDir\hMailData\$MBUFName") {
+		Remove-Item -Force -Path "$BackupTempDir\hMailData\$MBUFName"
+		Debug "Previously backed up $MBUFName successfully deleted"
+	} Else {
+		Debug "No previous backup copy of $MBUFName exists"
 	}
-	Catch {
-		Debug "[ERROR] hMailServer.ini Backup : $Error"
-		Email "[ERROR] Backup hMailServer.ini : Check Debug Log"
+	Debug "Backing up server copy of $MBUFName"
+	If (Test-Path $MBUF) {
+		Try {
+			Copy-Item -Path $MBUF -Destination "$BackupTempDir\hMailData"
+			$BackupSuccess++
+			Debug "$MBUFName successfully backed up"
+		}
+		Catch {
+			Debug "[ERROR] $MBUF Backup : $Error"
+			Email "[ERROR] Backup $MBUFName : Check Debug Log"
+		}
+	} Else {
+		Debug "$MBUF copy ERROR : File path not validated"
 	}
-} Else {
-	Debug "hMailServer.ini copy ERROR : File path not validated"
 }
 
 <#  Report backup success  #>
-If ($BackupSuccess -eq 2) {
-	Email "[OK] Backed up hMailServer DB and INI"
+If ($BackupSuccess -eq (2 + ($MiscBackupFiles).Count)) {
+	Email "[OK] Backed up hMailServer Data, DB and Misc Files"
+} Else {
+	Email "[ERROR] Backup count mismatch : Check Debug Log"
 }
 
 <#  Restart SpamAssassin and hMailServer  #>

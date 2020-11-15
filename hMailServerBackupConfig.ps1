@@ -29,6 +29,12 @@ $UseSA             = $True                  # Specifies whether SpamAssassin is 
 $PruneBackups      = $True                  # If true, will delete local backups older than N days
 $DaysToKeepBackups = 5                      # Number of days to keep backups - older backups will be deleted at end of script
 
+<###   MISCELLANEOUS BACKUP FILES   ###>    # Array of additional miscellaneous files to backup
+$MiscBackupFiles   = @(
+	"C:\Program Files (x86)\hMailServer\Bin\hMailServer.INI"
+	"C:\Program Files (x86)\hMailServer\Events\EventHandlers.vbs"
+)
+
 <###   FOLDER LOCATIONS   ###>
 $hMSDir            = "C:\Program Files (x86)\hMailServer"  # hMailServer Install Directory
 $SADir             = "C:\Program Files\JAM Software\SpamAssassin for Windows"  # SpamAssassin Install Directory
