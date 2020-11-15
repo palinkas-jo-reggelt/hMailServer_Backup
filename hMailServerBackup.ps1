@@ -139,7 +139,7 @@ If ($UseSA) {
 		Debug "Finished updating SpamAssassin in $(ElapsedTime $BeginSAUpdate)"
 		Email "[OK] SpamAssassin updated"
 		If ($SAUpdate -match "Update finished, no fresh updates were available"){
-			Email "[INFO] No fresh SpamAssassin updates available"
+			Email "[INFO] No fresh pdates available"
 		}
 	}
 	Catch {
@@ -175,7 +175,7 @@ If ($CycleLogs) {
 			} 
 			Catch {
 				$Err = $Error[0]
-				Debug "SpamAssassin update ERROR : $Err"
+				Debug "SpamAssassin log cycling ERROR : $Err"
 			}
 		} Else {
 			Debug "spamd.log not found"
