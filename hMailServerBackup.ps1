@@ -43,17 +43,21 @@ $Error.Clear()
 
 <#  Validate folders  #>
 $hMSDir = $hMSDir -Replace('\\$','')
-ValidateFolders $hMSDir
+$SevenZipDir = $SevenZipDir -Replace('\\$','')
 $MailDataDir = $MailDataDir -Replace('\\$','')
-ValidateFolders $MailDataDir
 $BackupTempDir = $BackupTempDir -Replace('\\$','')
-ValidateFolders $BackupTempDir
 $BackupLocation = $BackupLocation -Replace('\\$','')
-ValidateFolders $BackupLocation
 $SADir = $SADir -Replace('\\$','')
-If ($UseSA) {ValidateFolders $SADir}
 $SAConfDir = $SAConfDir -Replace('\\$','')
-If ($UseSA) {ValidateFolders $SAConfDir}
+ValidateFolders $hMSDir
+ValidateFolders $SevenZipDir
+ValidateFolders $MailDataDir
+ValidateFolders $BackupTempDir
+ValidateFolders $BackupLocation
+If ($UseSA) {
+	ValidateFolders $SADir
+	ValidateFolders $SAConfDir
+}
 
 <#  Delete old debug files and create new  #>
 $EmailBody = "$PSScriptRoot\EmailBody.log"
@@ -139,7 +143,8 @@ If ($UseSA) {
 		}
 	}
 	Catch {
-		Debug "[ERROR] SpamAssassin update : $Error"
+		$Err = $Error[0]
+		Debug "[ERROR] SpamAssassin update : $Err"
 		Email "[ERROR] SpamAssassin update : Check Debug Log"
 	}
 }
@@ -149,16 +154,29 @@ If ($CycleLogs) {
 	Debug "----------------------------"
 	Debug "Cycling Logs"
 	If (Test-Path "$hMSDir\Logs\hmailserver_events.log") {
-		Try {Rename-Item "$hMSDir\Logs\hmailserver_events.log" "hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"} 
-		Catch {Debug "SpamAssassin update ERROR : $Error"}
-		Debug "Cylcled hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"
+		$NewEventLogName = "hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"
+		Try {
+			Rename-Item "$hMSDir\Logs\hmailserver_events.log" $NewEventLogName -ErrorAction Stop
+			Debug "Cylcled hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"
+			} 
+		Catch {
+			$Err = $Error[0]
+			Debug "Event log cylcling ERROR : $Err"
+		}
 	} Else {
 		Debug "hmailserver_events.log not found"
 	}
 	If ($UseSA) {
 		If (Test-Path "$hMSDir\Logs\spamd.log") {
-			Try {Rename-Item "$hMSDir\Logs\spamd.log" "spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"} Catch {Debug "SpamAssassin update ERROR : $Error"}
-			Debug "Cylcled spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"
+			$NewSpamdLogName = "spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"
+			Try {
+				Rename-Item "$hMSDir\Logs\spamd.log" $NewSpamdLogName -ErrorAction Stop
+				Debug "Cylcled spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"
+			} 
+			Catch {
+				$Err = $Error[0]
+				Debug "SpamAssassin update ERROR : $Err"
+			}
 		} Else {
 			Debug "spamd.log not found"
 		}
@@ -167,9 +185,8 @@ If ($CycleLogs) {
 
 <#  Prune hMailServer logs  #>
 If ($PruneLogs) {
-	$FilesToDel = Get-ChildItem -Path "$hMSDir\Logs"  | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepLogs))}
-	$CountDelLogs = (Test-Path $FilesToDel -PathType Leaf).Count
-	If ($CountDelLogs -gt 0) {
+	$FilesToDel = Get-ChildItem -Path "$hMSDir\Logs" | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepLogs))}
+	If ($FilesToDel.Count -gt 0){
 		Debug "----------------------------"
 		Debug "Begin pruning hMailServer logs older than $DaysToKeepLogs days"
 		$EnumCountDelLogs = 0
@@ -192,7 +209,8 @@ If ($PruneLogs) {
 			}
 		}
 		Catch {
-			Debug "[ERROR] Prune hMailServer logs : $Error"
+			$Err = $Error[0]
+			Debug "[ERROR] Prune hMailServer logs : $Err"
 			Email "[ERROR] Prune hMailServer logs : Check Debug Log"
 		}
 	}
@@ -220,13 +238,15 @@ Try {
 	Email "[OK] $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
 }
 Catch {
-	Debug "[ERROR] RoboCopy : $Error"
+	$Err = $Error[0]
+	Debug "[ERROR] RoboCopy : $Err"
 	Email "[ERROR] RoboCopy : Check Debug Log"
 }
 
 <#  Backup database files  #>
 $BeginDBBackup = Get-Date
 If ($UseMySQL) {
+	$Error.Clear()
 	Debug "----------------------------"
 	Debug "Begin backing up MySQL"
 	Debug "Deleting old MySQL database dump"
@@ -235,7 +255,8 @@ If ($UseMySQL) {
 		Debug "Old MySQL database successfully deleted"
 	}
 	Catch {
-		Debug "[ERROR] Old MySQL database delete : $Error"
+		$Err = $Error[0]
+		Debug "[ERROR] Old MySQL database delete : $Err"
 		Email "[ERROR] Old MySQL database delete : Check Debug Log"
 	}
 	Debug "Backing up MySQL"
@@ -243,12 +264,13 @@ If ($UseMySQL) {
 	$MySQLDumpPass = "-p$MySQLPass"
 	$MySQLDumpFile = "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).sql"
 	Try {
-		& $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer --result-file=$MySQLDumpFile | Out-String
+		& $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer --result-file=$MySQLDumpFile
 		$BackupSuccess++
 		Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
 	}
 	Catch {
-		Debug "[ERROR] MySQL Dump : $Error"
+		$Err = $Error[0]
+		Debug "[ERROR] MySQL Dump : $Err"
 		Email "[ERROR] MySQL Dump : Check Debug Log"
 	}
 } Else {
@@ -262,7 +284,8 @@ If ($UseMySQL) {
 		Debug "Internal DB successfully backed up in $(ElapsedTime $BeginDBBackup)"
 	}
 	Catch {
-		Debug "[ERROR] RoboCopy Internal DB : $Error"
+		$Err = $Error[0]
+		Debug "[ERROR] RoboCopy Internal DB : $Err"
 		Email "[ERROR] RoboCopy Internal DB : Check Debug Log"
 	}
 }
@@ -288,7 +311,8 @@ $MiscBackupFiles | ForEach {
 			Debug "$MBUFName successfully backed up"
 		}
 		Catch {
-			Debug "[ERROR] $MBUF Backup : $Error"
+			$Err = $Error[0]
+			Debug "[ERROR] $MBUF Backup : $Err"
 			Email "[ERROR] Backup $MBUFName : Check Debug Log"
 		}
 	} Else {
@@ -298,7 +322,7 @@ $MiscBackupFiles | ForEach {
 
 <#  Report backup success  #>
 If ($BackupSuccess -eq (2 + ($MiscBackupFiles).Count)) {
-	Email "[OK] Backed up hMailServer Data, DB and Misc Files"
+	Email "[OK] Backed up database and misc files"
 } Else {
 	Email "[ERROR] Backup count mismatch : Check Debug Log"
 }
@@ -339,7 +363,8 @@ If ($PruneBackups) {
 			}
 		}
 		Catch {
-			Debug "[ERROR] Prune backups : $Error"
+			$Err = $Error[0]
+			Debug "[ERROR] Prune backups : $Err"
 			Email "[ERROR] Prune backups : Check Debug Log"
 		}
 	}

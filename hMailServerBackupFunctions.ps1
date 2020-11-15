@@ -59,7 +59,8 @@ Function EmailResults {
 		$SMTP.Send($Message)
 	}
 	Catch {
-		Debug "Email ERROR : $Error"
+		$Err = $Error[0]
+		Debug "Email ERROR : $Err"
 	}
 }
 
@@ -74,7 +75,8 @@ Function GmailResults ($GBody){
 		$SMTP.Send($Message)
 	}
 	Catch {
-		Debug "Gmail ERROR : $Error"
+		$Err = $Error[0]
+		Debug "Gmail ERROR : $Err"
 	}
 }
 
@@ -103,65 +105,24 @@ Function ElapsedTime ($EndTime) {
 
 <#  Service start and stop functions  #>
 
-Function ServiceStart ($ServiceName) {
-	<#  Check to see if already running  #>
-	If ($ServiceName -eq $hMSServiceName) {$ServiceDescription = "hMailServer"}
-	If ($ServiceName -eq $SAServiceName) {$ServiceDescription = "SpamAssassin"}
-	$BeginStartupRoutine = Get-Date
-	Debug "----------------------------"
-	Debug "Start $ServiceDescription"
-	$ServiceStopped = $False
-	(Get-Service $ServiceName).Refresh()
-	If ((Get-Service $ServiceName).Status -eq 'Running'){
-		Debug "$ServiceDescription already RUNNING. Nothing to start."
-		Email "[INFO] $ServiceDescription : service already RUNNING. Check event logs."
-	} Else {
-		Debug "$ServiceDescription not running. Preparing to start service."
-		$ServiceStopped = $True
-	}
-
-	<#  Start service routine  #>
-	If ($ServiceStopped) {
-		Debug "$ServiceDescription starting up"
-		$BeginStartup = Get-Date
-		Do {
-			Start-Service $ServiceName
-			# Start-Sleep -Seconds 60
-			(Get-Service $ServiceName).Refresh()
-			$ServiceStatus = (Get-Service $ServiceName).Status
-		} Until (((New-Timespan $BeginStartup).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Running"))
-
-		If ($ServiceStatus -ne "Running"){
-			Debug "$ServiceDescription failed to start"
-			GmailResults "$ServiceDescription failed to start during backup routine! Check status NOW!"
-			Break
-		} Else {
-			Debug "$ServiceDescription successfully started in $(ElapsedTime $BeginStartupRoutine)"
-			Email "[OK] $ServiceDescription started"
-		}
-	}
-}
-
 Function ServiceStop ($ServiceName) {
 	<#  Check to see if already stopped  #>
-	If ($ServiceName -eq $hMSServiceName) {$ServiceDescription = "hMailServer"}
-	If ($ServiceName -eq $SAServiceName) {$ServiceDescription = "SpamAssassin"}
 	$BeginShutdownRoutine = Get-Date
 	Debug "----------------------------"
-	Debug "Stop $ServiceDescription"
+	Debug "Stop $ServiceName"
 	$ServiceRunning = $False
 	(Get-Service $ServiceName).Refresh()
 	If ((Get-Service $ServiceName).Status -eq 'Stopped'){
-		Debug "$ServiceDescription already STOPPED. Nothing to stop. Check event logs."
-		Email "[INFO] $ServiceDescription : service already STOPPED. Check event logs."
+		Debug "$ServiceName already STOPPED. Nothing to stop. Check event logs."
+		Email "[INFO] $ServiceName : service already STOPPED. Check event logs."
 	} Else {
-		Debug "$ServiceDescription running. Preparing to stop service."
+		Debug "$ServiceName running. Preparing to stop service."
 		$ServiceRunning = $True
 	}
 
 	<#  Stop service routine  #>
 	If ($ServiceRunning) {
-		Debug "$ServiceDescription shutting down."
+		Debug "$ServiceName shutting down."
 		$BeginShutdown = Get-Date
 		Do {
 			Stop-Service $ServiceName
@@ -171,12 +132,49 @@ Function ServiceStop ($ServiceName) {
 		} Until (((New-Timespan $BeginShutdown).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Stopped"))
 
 		If ($ServiceStatus -ne "Stopped"){
-			Debug "$ServiceDescription failed to stop."
-			GmailResults "$ServiceDescription failed to stop during backup routine! Check status NOW!"
+			Debug "$ServiceName failed to stop."
+			GmailResults "$ServiceName failed to stop during backup routine! Check status NOW!"
 			Break
 		} Else {
-			Debug "$ServiceDescription successfully stopped in $(ElapsedTime $BeginShutdownRoutine)"
-			Email "[OK] $ServiceDescription stopped"
+			Debug "$ServiceName successfully stopped in $(ElapsedTime $BeginShutdownRoutine)"
+			Email "[OK] $ServiceName stopped"
+		}
+	}
+}
+
+Function ServiceStart ($ServiceName) {
+	<#  Check to see if already running  #>
+	$BeginStartupRoutine = Get-Date
+	Debug "----------------------------"
+	Debug "Start $ServiceName"
+	$ServiceStopped = $False
+	(Get-Service $ServiceName).Refresh()
+	If ((Get-Service $ServiceName).Status -eq 'Running'){
+		Debug "$ServiceName already RUNNING. Nothing to start."
+		Email "[INFO] $ServiceName : service already RUNNING. Check event logs."
+	} Else {
+		Debug "$ServiceName not running. Preparing to start service."
+		$ServiceStopped = $True
+	}
+
+	<#  Start service routine  #>
+	If ($ServiceStopped) {
+		Debug "$ServiceName starting up"
+		$BeginStartup = Get-Date
+		Do {
+			Start-Service $ServiceName
+			# Start-Sleep -Seconds 60
+			(Get-Service $ServiceName).Refresh()
+			$ServiceStatus = (Get-Service $ServiceName).Status
+		} Until (((New-Timespan $BeginStartup).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Running"))
+
+		If ($ServiceStatus -ne "Running"){
+			Debug "$ServiceName failed to start"
+			GmailResults "$ServiceName failed to start during backup routine! Check status NOW!"
+			Break
+		} Else {
+			Debug "$ServiceName successfully started in $(ElapsedTime $BeginStartupRoutine)"
+			Email "[OK] $ServiceName started"
 		}
 	}
 }
@@ -188,10 +186,11 @@ Function MakeArchive {
 	Debug "----------------------------"
 	Debug "Create archive : $BackupName"
 	Debug "Archive folder : $BackupTempDir"
+	$SevenZipExe = "$SevenZipDir\7z.exe"
 	$VolumeSwitch = "-v$VolumeSize"
 	$PWSwitch = "-p$ArchivePassword"
 	Try {
-		$SevenZip = & cmd /c 7z a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
+		$SevenZip = & cmd /c $SevenZipExe a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
 		Debug $SevenZip
 		Debug "Archive creation finished in $(ElapsedTime $StartArchive)"
 		Debug "Wait a few seconds to make sure archive is finished"
@@ -199,9 +198,10 @@ Function MakeArchive {
 		Start-Sleep -Seconds 3
 	}
 	Catch {
-		Debug "[ERROR] Archive Creation : $Error"
+		$Err = $Error[0]
+		Debug "[ERROR] Archive Creation : $Err"
 		Email "[ERROR] Archive Creation : Check Debug Log"
-		Email "[ERROR] Archive Creation : $Error"
+		Email "[ERROR] Archive Creation : $Err"
 		EmailResults
 		Exit
 	}
@@ -226,12 +226,12 @@ Function GetSubFolders ($Folder) {
 			If ($SubFolder.Messages.Count -gt 0) {
 				If ($PruneSubFolders) {GetMessages $SubFolder}
 			} Else {
-				If ($DeleteEmptySubFolders) {$ArrayDeletedFolders += $SubFolderID}
+				If ($PruneEmptySubFolders) {$ArrayDeletedFolders += $SubFolderID}
 			} 
 			$IterateFolder++
 		} Until ($IterateFolder -eq $Folder.SubFolders.Count)
 	}
-	If ($DeleteEmptySubFolders) {
+	If ($PruneEmptySubFolders) {
 		$ArrayDeletedFolders | ForEach {
 			$CheckFolder = $Folder.SubFolders.ItemByDBID($_)
 			$FolderName = $CheckFolder.Name
@@ -242,9 +242,10 @@ Function GetSubFolders ($Folder) {
 					Debug "Deleted empty subfolder $FolderName in $AccountAddress"
 				}
 				Catch {
+					$Err = $Error[0]
 					$DeleteFolderErrors++
 					Debug "[ERROR] Deleting empty subfolder $FolderName in $AccountAddress"
-					Debug "[ERROR] : $Error"
+					Debug "[ERROR] : $Err"
 				}
 				$Error.Clear()
 			}
@@ -310,9 +311,10 @@ Function GetMessages ($Folder) {
 			$TotalDeletedMessages++
 		}
 		Catch {
+			$Err = $Error[0]
 			$DeleteMessageErrors++
 			Debug "[ERROR] Deleting messages from folder $AFolderName in $AccountAddress"
-			Debug "[ERROR] $Error"
+			Debug "[ERROR] $Err"
 		}
 		$Error.Clear()
 	}
@@ -386,10 +388,10 @@ Function PruneMessages {
 	} Else {
 		If ($TotalDeletedFolders -gt 0) {
 			Debug "Successfully pruned $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
-			Email "[OK] Deleted $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
+			Email "[INFO] Deleted $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
 		} Else {
 			Debug "No empty subfolders deleted"
-			Email "[OK] No empty subfolders to delete"
+			# Email "[OK] No empty subfolders to delete"
 		}
 	}
 }
@@ -417,9 +419,10 @@ Function OffsiteUpload {
 		Debug "Account ID   : $AccountID"
 	}
 	Catch {
-		Debug "LetsUpload Authentication ERROR : $Error"
+		$Err = $Error[0]
+		Debug "LetsUpload Authentication ERROR : $Err"
 		Email "[ERROR] LetsUpload Authentication : Check Debug Log"
-		Email "[ERROR] LetsUpload Authentication : $Error"
+		Email "[ERROR] LetsUpload Authentication : $Err"
 		EmailResults
 		Exit
 	}
@@ -444,9 +447,10 @@ Function OffsiteUpload {
 		Debug "Folder URL : $FolderURL"
 	}
 	Catch {
-		Debug "LetsUpload Folder Creation ERROR : $Error"
+		$Err = $Error[0]
+		Debug "LetsUpload Folder Creation ERROR : $Err"
 		Email "[ERROR] LetsUpload Folder Creation : Check Debug Log"
-		Email "[ERROR] LetsUpload Folder Creation : $Error"
+		Email "[ERROR] LetsUpload Folder Creation : $Err"
 		EmailResults
 		Exit
 	}
@@ -474,9 +478,10 @@ Function OffsiteUpload {
 			$FileEnc = [System.Text.Encoding]::GetEncoding('ISO-8859-1').GetString($FileBytes);
 		}
 		Catch {
-				Debug "Error in encoding file $UploadCounter."
-				Debug "$Error"
-				Debug " "
+			$Err = $Error[0]
+			Debug "Error in encoding file $UploadCounter."
+			Debug "$Err"
+			Debug " "
 		}
 		Debug "Finished encoding file in $(ElapsedTime $BeginEnc)";
 		$Boundary = [System.Guid]::NewGuid().ToString(); 
@@ -527,8 +532,9 @@ Function OffsiteUpload {
 				Debug "Finished uploading file in $(ElapsedTime $BeginUpload)"
 			} 
 			Catch {
+				$Err = $Error[0]
 				Debug "Upload try $UploadTries"
-				Debug "[ERROR]  : $Error"
+				Debug "[ERROR]  : $Err"
 				If (($USize -gt 0) -and ($UFileID -match '\d+')) {
 					Debug "Deleting file due to size mismatch"
 					$URIDF = "https://letsupload.io/api/v2/file/delete"
@@ -541,7 +547,8 @@ Function OffsiteUpload {
 						$DeleteFile = Invoke-RestMethod -Method GET $URIDF -Body $DFBody -ContentType 'application/json; charset=utf-8' 
 					}
 					Catch {
-						Debug "File delete ERROR : $Error"
+						$Err = $Error[0]
+						Debug "File delete ERROR : $Err"
 					}
 				}
 			}
@@ -572,9 +579,10 @@ Function OffsiteUpload {
 		$FolderListing = Invoke-RestMethod -Method GET $URIFL -Body $FLBody -ContentType 'application/json; charset=utf-8' 
 	}
 	Catch {
-		Debug "LetsUpload Folder Listing ERROR : $Error"
+		$Err = $Error[0]
+		Debug "LetsUpload Folder Listing ERROR : $Err"
 		Email "[ERROR] LetsUpload Folder Listing : Check Debug Log"
-		Email "[ERROR] LetsUpload Folder Listing : $Error"
+		Email "[ERROR] LetsUpload Folder Listing : $Err"
 	}
 	$FolderListingStatus = $FolderListing._status
 	$RemoteFileCount = ($FolderListing.data.files.id).Count
