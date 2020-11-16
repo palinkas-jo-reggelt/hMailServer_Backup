@@ -13,7 +13,7 @@
 
 	
 .NOTES
-	7-Zip required - install and place in system path
+	7-Zip required
 	Run at 12:58PM from task scheduler
 	
 	
@@ -329,7 +329,7 @@ Function PruneMessages {
 	$Error.Clear()
 	$BeginDeletingOldMessages = Get-Date
 	Debug "----------------------------"
-	Debug "Begin deleting messages older than $DaysBeforeDelete days"
+	Debug "Begin pruning messages older than $DaysBeforeDelete days"
 	If (-not($DoDelete)) {
 		Debug "Delete disabled - Test Run ONLY"
 	}

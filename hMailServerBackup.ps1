@@ -13,7 +13,7 @@
 
 	
 .NOTES
-	7-Zip required - install and place in system path
+	7-Zip required
 	Run at 11:58PM from task scheduler in order to properly cycle log files.
 	
 	
@@ -235,7 +235,7 @@ Try {
 	$BackupSuccess++
 	Debug "Robocopy backup success: $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
 	Email "[OK] hMailServer DataDir backed up:"
-	Email "[OK] $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
+	Email "$Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
 }
 Catch {
 	$Err = $Error[0]
