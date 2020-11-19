@@ -13,7 +13,7 @@
 
 	
 .NOTES
-	7-Zip required
+	7-Zip required - install and place in system path
 	Run at 11:58PM from task scheduler in order to properly cycle log files.
 	
 	
@@ -186,7 +186,8 @@ If ($CycleLogs) {
 <#  Prune hMailServer logs  #>
 If ($PruneLogs) {
 	$FilesToDel = Get-ChildItem -Path "$hMSDir\Logs" | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepLogs))}
-	If ($FilesToDel.Count -gt 0){
+	$CountDelLogs = $FilesToDel.Count
+	If ($CountDelLogs -gt 0){
 		Debug "----------------------------"
 		Debug "Begin pruning hMailServer logs older than $DaysToKeepLogs days"
 		$EnumCountDelLogs = 0
@@ -293,17 +294,17 @@ If ($UseMySQL) {
 <#  Backup Miscellaneous Files  #>
 Debug "----------------------------"
 Debug "Begin backing up miscellaneous files"
-Debug "Deleting old backup copy of miscellaneous files"
+# Debug "Deleting old backup copy of miscellaneous files"
 $MiscBackupFiles | ForEach {
 	$MBUF = $_
 	$MBUFName = Split-Path -Path $MBUF -Leaf
 	If (Test-Path "$BackupTempDir\hMailData\$MBUFName") {
 		Remove-Item -Force -Path "$BackupTempDir\hMailData\$MBUFName"
-		Debug "Previously backed up $MBUFName successfully deleted"
+		# Debug "Previously backed up $MBUFName successfully deleted"
 	} Else {
 		Debug "No previous backup copy of $MBUFName exists"
 	}
-	Debug "Backing up server copy of $MBUFName"
+	# Debug "Backing up server copy of $MBUFName"
 	If (Test-Path $MBUF) {
 		Try {
 			Copy-Item -Path $MBUF -Destination "$BackupTempDir\hMailData"
@@ -322,7 +323,7 @@ $MiscBackupFiles | ForEach {
 
 <#  Report backup success  #>
 If ($BackupSuccess -eq (2 + ($MiscBackupFiles).Count)) {
-	Email "[OK] Backed up database and misc files"
+	Email "[OK] Backed up data dir, db and misc files"
 } Else {
 	Email "[ERROR] Backup count mismatch : Check Debug Log"
 }

@@ -13,7 +13,7 @@
 
 	
 .NOTES
-	7-Zip required
+	7-Zip required - install and place in system path
 	Run at 12:58PM from task scheduler
 	
 	
@@ -563,8 +563,6 @@ Function OffsiteUpload {
 		}
 		$UploadCounter++
 	}
-	Debug "----------------------------"
-	Debug "Finished offsite upload process in $(ElapsedTime $BeginOffsiteUpload)"
 	
 	<#  Count remote files  #>
 	Debug "----------------------------"
@@ -592,7 +590,7 @@ Function OffsiteUpload {
 		Debug "There are $RemoteFileCount file$(Plural $RemoteFileCount) in the remote folder"
 		If ($RemoteFileCount -eq $CountArchVol) {
 			Debug "----------------------------"
-			Debug "Finished uploading $CountArchVol file$(Plural $CountArchVol) in $(ElapsedTime $StartUpload)"
+			Debug "Finished uploading $CountArchVol file$(Plural $CountArchVol) in $(ElapsedTime $BeginOffsiteUpload)"
 			Debug "Upload sucessful. $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
 			Email "[OK] Offsite backup upload:"
 			Email "[OK] $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
