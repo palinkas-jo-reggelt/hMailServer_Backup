@@ -29,7 +29,7 @@ $UseSA                 = $True                  # Specifies whether SpamAssassin
 $PruneBackups          = $True                  # If true, will delete local backups older than N days
 $DaysToKeepBackups     = 5                      # Number of days to keep backups - older backups will be deleted at end of script
 
-<###   MISCELLANEOUS BACKUP FILES   ###>    # Array of additional miscellaneous files to backup
+<###   MISCELLANEOUS BACKUP FILES   ###>        # Array of additional miscellaneous files to backup
 $MiscBackupFiles   = @(
 	"C:\Program Files (x86)\hMailServer\Bin\hMailServer.INI"
 	"C:\Program Files (x86)\hMailServer\Events\EventHandlers.vbs"
@@ -43,6 +43,7 @@ $SevenZipDir           = "C:\Program Files\7-Zip"  # Path to 7-Zip Install Direc
 $MailDataDir           = "C:\HMS-DATA"          # hMailServer Data Dir
 $BackupTempDir         = "C:\HMS-BACKUP-TEMP"   # Temporary backup folder for RoboCopy to compare
 $BackupLocation        = "C:\HMS-BACKUP"        # Location archive files will be stored
+$BayesBackupLocation   = "C:\Bayes\bayes_backup"  # Bayes backup folder
 
 <###   HMAILSERVER COM VARIABLES   ###>
 $hMSAdminPass          = "supersecretpassword"  # hMailServer Admin password
