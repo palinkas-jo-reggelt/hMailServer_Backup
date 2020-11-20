@@ -396,6 +396,224 @@ Function PruneMessages {
 	}
 }
 
+<#  Feed Bayes  #>
+
+<#  Set Bayes variables  #>
+Set-Variable -Name TotalHamFedMessages -Value 0 -Option AllScope
+Set-Variable -Name TotalSpamFedMessages -Value 0 -Option AllScope
+Set-Variable -Name HamFedMessageErrors -Value 0 -Option AllScope
+Set-Variable -Name SpamFedMessageErrors -Value 0 -Option AllScope
+Set-Variable -Name LearnedHamMessages -Value 0 -Option AllScope
+Set-Variable -Name LearnedSpamMessages -Value 0 -Option AllScope
+
+Function GetBayesSubFolders ($Folder) {
+	$IterateFolder = 0
+	$ArrayBayesMessages = @()
+	If ($Folder.SubFolders.Count -gt 0) {
+		Do {
+			$SubFolder = $Folder.SubFolders.Item($IterateFolder)
+			$SubFolderName = $SubFolder.Name
+			$SubFolderID = $SubFolder.ID
+			If ($SubFolder.Subfolders.Count -gt 0) {GetBayesSubFolders $SubFolder} 
+			If ($SubFolder.Messages.Count -gt 0) {
+				If ($PruneSubFolders) {GetBayesMessages $SubFolder}
+			} 
+			$IterateFolder++
+		} Until ($IterateFolder -eq $Folder.SubFolders.Count)
+	}
+	$ArrayBayesMessages.Clear()
+}
+
+Function GetBayesMatchFolders ($Folder) {
+	$IterateFolder = 0
+	If ($Folder.SubFolders.Count -gt 0) {
+		Do {
+			$SubFolder = $Folder.SubFolders.Item($IterateFolder)
+			$SubFolderName = $SubFolder.Name
+			If (($SubFolderName -match [regex]$HamFolders) -or ($SubFolderName -match [regex]$SpamFolders)) {
+				GetBayesSubFolders $SubFolder
+				GetBayesMessages $SubFolder
+			} Else {
+				GetBayesMatchFolders $SubFolder
+			}
+			$IterateFolder++
+		} Until ($IterateFolder -eq $Folder.SubFolders.Count)
+	}
+}
+
+Function GetBayesMessages ($Folder) {
+	$IterateMessage = 0
+	$ArrayHamToFeed = @()
+	$ArraySpamToFeed = @()
+	$HamFedMessages = 0
+	$SpamFedMessages = 0
+	If ($Folder.Messages.Count -gt 0) {
+		If ($Folder.Name -match [regex]$HamFolders) {
+			Do {
+				$Message = $Folder.Messages.Item($IterateMessage)
+				If ($Message.InternalDate -gt ((Get-Date).AddDays(-$BayesDays))) {
+					$ArrayHamToFeed += $Message.FileName
+				}
+				$IterateMessage++
+			} Until ($IterateMessage -eq $Folder.Messages.Count)
+		}
+		If ($Folder.Name -match [regex]$SpamFolders) {
+			Do {
+				$Message = $Folder.Messages.Item($IterateMessage)
+				If ($Message.InternalDate -gt ((Get-Date).AddDays(-$BayesDays))) {
+					$ArraySpamToFeed += $Message.FileName
+				}
+				$IterateMessage++
+			} Until ($IterateMessage -eq $Folder.Messages.Count)
+		}
+	}
+	$ArrayHamToFeed | ForEach {
+		$FileName = $_
+		Try {
+			If ((Get-Item $FileName).Length -lt 512000) {
+				If ($DoSpamC) {
+					$SpamC = & cmd /c "`"$SADir\spamc.exe`" -d `"$SAHost`" -p `"$SAPort`" -L ham < `"$FileName`""
+					$SpamCResult = Out-String -InputObject $SpamC
+					If ($SpamCResult -match "Message successfully un/learned") {$LearnedHamMessages++}
+					If (($SpamCResult -notmatch "Message successfully un/learned") -and ($SpamCResult -notmatch "Message was already un/learned")) {
+						Throw $SpamCResult
+					}
+				}
+				$HamFedMessages++
+				$TotalHamFedMessages++
+			}
+		}
+		Catch {
+			$HamFed0MessageErrors++
+			$Err = $Error[0]
+			Debug "[ERROR] Feeding HAM message $FileName in $AccountAddress"
+			Debug "[ERROR] $Err"
+		}
+	}
+	$ArraySpamToFeed | ForEach {
+		$FileName = $_
+		Try {
+			If ((Get-Item $FileName).Length -lt 512000) {
+				If ($DoSpamC) {
+					$SpamC = & cmd /c "`"$SADir\spamc.exe`" -d `"$SAHost`" -p `"$SAPort`" -L spam < `"$FileName`""
+					$SpamCResult = Out-String -InputObject $SpamC
+					If ($SpamCResult -match "Message successfully un/learned") {$LearnedSpamMessages++}
+					If (($SpamCResult -notmatch "Message successfully un/learned") -and ($SpamCResult -notmatch "Message was already un/learned")) {
+						Throw $SpamCResult
+					}
+				}
+				$SpamFedMessages++
+				$TotalSpamFedMessages++
+			}
+		}
+		Catch {
+			$SpamFed0MessageErrors++
+			$Err = $Error[0]
+			Debug "[ERROR] Feeding SPAM message $FileName in $AccountAddress"
+			Debug "[ERROR] $Err"
+		}
+	}
+	If ($HamFedMessages -gt 0) {
+		Debug "Fed $HamFedMessages HAM messages to SpamC from $AccountAddress"
+	}
+	If ($SpamFedMessages -gt 0) {
+		Debug "Fed $SpamFedMessages SPAM messages to SpamC from $AccountAddress"
+	}
+	$ArraySpamToFeed.Clear()
+}
+
+Function FeedBayes {
+	
+	$Error.Clear()
+	
+	$BeginFeedingBayes = Get-Date
+	Debug "----------------------------"
+	Debug "Begin deleting messages older than $DaysBeforeDelete days"
+	If (-not($DoSpamC)) {
+		Debug "SpamC disabled - Test Run ONLY"
+	}
+
+	<#  Authenticate hMailServer COM  #>
+	$hMS = New-Object -COMObject hMailServer.Application
+	$hMS.Authenticate("Administrator", $hMSAdminPass) | Out-Null
+	
+	$SAHost = $hMS.Settings.AntiSpam.SpamAssassinHost
+	$SAPort = $hMS.Settings.AntiSpam.SpamAssassinPort
+	
+	$IterateDomains = 0
+	Do {
+		$hMSDomain = $hMS.Domains.Item($IterateDomains)
+		If ($hMSDomain.Active) {
+			$IterateAccounts = 0
+			Do {
+				$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
+				If ($hMSAccount.Active) {
+					$AccountAddress = $hMSAccount.Address
+					$IterateIMAPFolders = 0
+					If ($hMSAccount.IMAPFolders.Count -gt 0) {
+						Do {
+							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
+							If (($hMSIMAPFolder.Name -match [regex]$HamFolders) -or ($hMSIMAPFolder.Name -match [regex]$SpamFolders)) {
+								If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
+									GetBayesSubFolders $hMSIMAPFolder
+								} # IF SUBFOLDER COUNT > 0
+								GetBayesMessages $hMSIMAPFolder
+							} # IF FOLDERNAME MATCH REGEX
+							Else {
+								GetBayesMatchFolders $hMSIMAPFolder
+							} # IF NOT FOLDERNAME MATCH REGEX
+						$IterateIMAPFolders++
+						} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
+					} # IF IMAPFOLDER COUNT > 0
+				} #IF ACCOUNT ACTIVE
+				$IterateAccounts++
+			} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
+		} # IF DOMAIN ACTIVE
+		$IterateDomains++
+	} Until ($IterateDomains -eq $hMS.Domains.Count)
+
+	Debug "----------------------------"
+	Debug "Finished feeding $($TotalHamFedMessages + $TotalSpamFedMessages) messages to Bayes in $(ElapsedTime $BeginFeedingBayes)"
+	
+	If ($HamFedMessageErrors -gt 0) {
+		Debug "Errors feeding HAM to SpamC : $HamFedMessageErrors Errors present"
+		Email "[ERROR] HAM SpamC : $HamFedMessageErrors Errors present : Check debug log"
+	} Else {
+		If ($TotalHamFedMessages -gt 0) {
+			Debug "Learned tokens from $LearnedHamMessages of $TotalHamFedMessages HAM messages fed to Bayes"
+			Email "[OK] Learned tokens from $LearnedHamMessages of $TotalHamFedMessages HAM messages fed to Bayes"
+		} Else {
+			Debug "No HAM messages older than $BayesDays days to feed to Bayes"
+			Email "[OK] No HAM messages older than $BayesDays days to feed to Bayes"
+		}
+	}
+	If ($SpamFedMessageErrors -gt 0) {
+		Debug "Errors feeding SPAM to SpamC : $SpamFedMessageErrors Errors present"
+		Email "[ERROR] SPAM SpamC : $SpamFedMessageErrors Errors present : Check debug log"
+	} Else {
+		If ($TotalSpamFedMessages -gt 0) {
+			Debug "Learned tokens from $LearnedSpamMessages of $TotalSpamFedMessages SPAM messages fed to Bayes"
+			Email "[OK] Learned tokens from $LearnedSpamMessages of $TotalSpamFedMessages SPAM messages fed to Bayes"
+		} Else {
+			Debug "No SPAM messages older than $BayesDays days to feed to Bayes"
+			Email "[OK] No SPAM messages older than $BayesDays days to feed to Bayes"
+		}
+	}
+
+	<#  Sync Bayes database  #>
+	Try {
+		& cmd /c "`"$SADir\sa-learn.exe`" --sync"
+		Debug "----------------------------"
+		Debug "Successfully synced Bayes database"
+	}
+	Catch {
+		$Err = $Error[0]
+		Debug "----------------------------"
+		Debug "[ERROR] syncing Bayes : $Err"
+		Email "[ERROR] syncing Bayes : $Err"
+	}
+}
+
 <#  Offsite upload function  #>
 
 Function OffsiteUpload {

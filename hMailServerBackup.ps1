@@ -371,8 +371,11 @@ If ($PruneBackups) {
 	}
 }
 
-<#  Delete messages/empty folders older than N number of days  #>
-PruneMessages
+<#  Prune messages/empty folders older than N number of days  #>
+If ($PruneMessages) {PruneMessages}
+
+<#  Feed Beyesian database  #>
+If ($FeedBayes) {FeedBayes}
 
 <#  Compress backup into 7z archives  #>
 MakeArchive
