@@ -13,7 +13,7 @@
 
 	
 .NOTES
-	7-Zip required
+	7-Zip required - install and place in system path
 	Run at 12:58PM from task scheduler
 	
 	
@@ -26,32 +26,36 @@
 $VerboseConsole        = $True                  # If true, will output debug to console
 $VerboseFile           = $True                  # If true, will output debug to file
 $UseSA                 = $True                  # Specifies whether SpamAssassin is in use
-$PruneBackups          = $True                  # If true, will delete local backups older than N days
-$DaysToKeepBackups     = 5                      # Number of days to keep backups - older backups will be deleted at end of script
 
 <###   MISCELLANEOUS BACKUP FILES   ###>        # Array of additional miscellaneous files to backup
-$MiscBackupFiles   = @(
-	"C:\Program Files (x86)\hMailServer\Bin\hMailServer.INI"
-	"C:\Program Files (x86)\hMailServer\Events\EventHandlers.vbs"
+$MiscBackupFiles       = @(
+	"C:\hMailServer\Bin\hMailServer.INI"
+	"C:\hMailServer\Events\EventHandlers.vbs"
+	"C:\Program Files\JAM Software\SpamAssassin for Windows\etc\spamassassin\local.cf"
 )
 
 <###   FOLDER LOCATIONS   ###>
-$hMSDir                = "C:\Program Files (x86)\hMailServer"  # hMailServer Install Directory
+$hMSDir                = "C:\hMailServer"       # hMailServer Install Directory
 $SADir                 = "C:\Program Files\JAM Software\SpamAssassin for Windows"  # SpamAssassin Install Directory
 $SAConfDir             = "C:\Program Files\JAM Software\SpamAssassin for Windows\etc\spamassassin"  # SpamAssassin Conf Directory
 $SevenZipDir           = "C:\Program Files\7-Zip"  # Path to 7-Zip Install Directory
 $MailDataDir           = "C:\HMS-DATA"          # hMailServer Data Dir
 $BackupTempDir         = "C:\HMS-BACKUP-TEMP"   # Temporary backup folder for RoboCopy to compare
 $BackupLocation        = "C:\HMS-BACKUP"        # Location archive files will be stored
-$BayesBackupLocation   = "C:\Bayes\bayes_backup"  # Bayes backup folder
+$BayesBackupLocation   = "C:\bayes_backup"      # Bayes backup folder
+$MySQLBINdir           = "C:\xampp\mysql\bin"   # MySQL BIN folder location
 
 <###   HMAILSERVER COM VARIABLES   ###>
 $hMSAdminPass          = "supersecretpassword"  # hMailServer Admin password
 
 <###   WINDOWS SERVICE VARIABLES   ###>
 $hMSServiceName        = "hMailServer"          # Name of hMailServer Service (check windows services to verify exact spelling)
-$SAServiceName         = "spamassassin"         # Name of SpamAssassin Service (check windows services to verify exact spelling)
+$SAServiceName         = "SpamAssassin"         # Name of SpamAssassin Service (check windows services to verify exact spelling)
 $ServiceTimeout        = 5                      # number of minutes to continue trying if service start or stop commands become unresponsive
+
+<###   PRUNE BACKUPS VARIABLES   ###>
+$PruneBackups          = $True                  # If true, will delete local backups older than N days
+$DaysToKeepBackups     = 5                      # Number of days to keep backups - older backups will be deleted at end of script
 
 <###   PRUNE MESSAGES VARIABLES   ###>
 $DoDelete              = $True                  # FOR TESTING - set to false to run and report results without deleting messages and folders
@@ -59,31 +63,36 @@ $PruneMessages         = $True                  # True will run message pruning 
 $PruneSubFolders       = $True                  # True will prune all folders in levels below name matching folders
 $PruneEmptySubFolders  = $True                  # True will delete empty subfolders below the matching level unless a subfolder within contains messages
 $DaysBeforeDelete      = 30                     # Number of days to keep messages in pruned folders
-$PruneFolders          = "Trash|Deleted|Junk|Spam|2020-[01][0-9]-[0-3][0-9]$|Unsubscribes"  # Names of IMAP folders you want to cleanup - uses regex
+$PruneFolders          = "Trash|Deleted|Junk|Spam|Folder-[0-9]{6}|Unsubscribes"  # Names of IMAP folders you want to cleanup - uses regex
 
 <###   FEED BAYES VARIABLES   ###>
 $DoSpamC               = $True                  # FOR TESTING - set to false to run and report results without feeding SpamC with spam/ham
 $FeedBayes             = $True                  # True will run Bayes feeding routine
+$BayesSubFolders       = $True                  # True will feed messages from regex name matching subfolders
 $HamFolders            = "INBOX|Ham"            # Ham folders to feed messages to spamC for bayes database - uses regex
 $SpamFolders           = "Spam|Junk"            # Spam folders to feed messages to spamC for bayes database - uses regex
 $BayesDays             = 7                      # Number of days worth of spam/ham to feed to bayes
 
 <###   MySQL VARIABLES   ###>
 $UseMySQL              = $True                  # Specifies whether database used is MySQL
-$MySQLBINdir           = "C:\xampp\mysql\bin"   # MySQL BIN folder location
-$MySQLUser             = "hmailserver"          # hMailServer database user
+$BackupAllMySQLDatbase = $True                  # True will backup all databases, not just hmailserver - must use ROOT user for this
+$MySQLDatabase         = "hmailserver"          # MySQL database name
+$MySQLUser             = "root"                 # hMailServer database user
 $MySQLPass             = "supersecretpassword"  # hMailServer database password
 $MySQLPort             = 3306                   # MySQL port
 
 <###   7-ZIP VARIABLES   ###>
+$UseSevenZip           = $True                  # True will compress backup files into archive
+$PWProtectedArchive    = $True                  # False = no-password zip archive, True = AES-256 encrypted multi-volume 7z archive
 $SevenZipInSystemPath  = $True                  # If false, will call full path to executable - seems to run much faster when called from the system path
 $VolumeSize            = "100m"                 # Size of archive volume parts - maximum 200m recommended - valid suffixes for size units are (b|k|m|g)
 $ArchivePassword       = "supersecretpassword"  # Password to 7z archive
 
 <###   LETSUPLOAD API VARIABLES   ###>
-$APIKey1               = "1QFMyGCDgCH7BKG6ZKhxmUvAl98abP4bYiJ16iJTtLYZopqycRZJpndpca6ZgByT"
-$APIKey2               = "Fky8b24HpzuYhPeXmZO8m1pe6vqcxluodasRtF1C6dnShutYkpguAlJYAWd7JgiB"
-$IsPublic              = 0                      # 0 = Private, 1 = Unlisted, 2 = Public in LetsUpload.io site search
+$UseLetsUpload         = $True                  # True will run upload routine
+$APIKey1               = "BYMDFZkQpzaj1DZpTHgQx48CLWZZSF5teG61FYJrVSLsGkwBiB2EGCaBkTCJLpoB"
+$APIKey2               = "qm7gQH6xiUA42HkTwEMauWYOb16lfXMbkmg6aWNzlO0dLtny95bCSRIrFTyyYOEP"
+$IsPublic              = 0                      # 0 = Private, 1 = Unlisted, 2 = Public in site search
 
 <###   HMAILSERVER LOG VARIABLES   ###>
 $CycleLogs             = $True                  # Cycle SpamAssassin and Event logs nightly
@@ -104,7 +113,7 @@ $AttachDebugLog        = $True                  # If true, will attach debug log
 $MaxAttachmentSize     = 1                      # Size in MB
 
 <###   GMAIL VARIABLES   ###>
-<#  Alternate messaging in case of hMailServer service failure  #>
+<#  Alternate messaging in case of hMailServer failure  #>
 <#  "Less Secure Apps" must be enabled in gmail account settings  #>
 $GmailUser             = "notifier@gmail.com"
 $GmailPass             = "supersecretpassword"

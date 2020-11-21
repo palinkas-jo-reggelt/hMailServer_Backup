@@ -41,7 +41,7 @@ $BackupName = "$DateString-hMailServer"
 <#  Clear out error variable  #>
 $Error.Clear()
 
-<#  Validate folders  #>
+<#  Remove trailing slashes from folder locations  #>
 $hMSDir = $hMSDir -Replace('\\$','')
 $SevenZipDir = $SevenZipDir -Replace('\\$','')
 $MailDataDir = $MailDataDir -Replace('\\$','')
@@ -49,6 +49,9 @@ $BackupTempDir = $BackupTempDir -Replace('\\$','')
 $BackupLocation = $BackupLocation -Replace('\\$','')
 $SADir = $SADir -Replace('\\$','')
 $SAConfDir = $SAConfDir -Replace('\\$','')
+$MySQLBINdir = $MySQLBINdir -Replace('\\$','')
+
+<#  Validate folders  #>
 ValidateFolders $hMSDir
 ValidateFolders $SevenZipDir
 ValidateFolders $MailDataDir
@@ -57,6 +60,9 @@ ValidateFolders $BackupLocation
 If ($UseSA) {
 	ValidateFolders $SADir
 	ValidateFolders $SAConfDir
+}
+If ($UseMySQL) {
+	ValidateFolders $MySQLBINdir
 }
 
 <#  Delete old debug files and create new  #>
@@ -70,14 +76,9 @@ Write-Output "::: hMailServer Backup Routine $(Get-Date -f D) :::" | Out-File $D
 Write-Output " " | Out-File $DebugLog -Encoding ASCII -Append
 If ($UseHTML) {
 	Write-Output "
-	<!DOCTYPE html PUBLIC `"-//W3C//DTD XHTML 1.0 Transitional//EN`" `"https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd`">
-	<html xmlns=`"https://www.w3.org/1999/xhtml`">
-	<head>
-	<title>hMailServer Backup & Offsite Upload</title>
-	<meta name=`"viewport`" content=`"width=device-width, initial-scale=1.0 `" />
-	</head>
-	<body style=`"font-family:Arial Narrow`">
-	<table>
+		<!DOCTYPE html><html>
+		<head><meta name=`"viewport`" content=`"width=device-width, initial-scale=1.0 `" /></head>
+		<body style=`"font-family:Arial Narrow`"><table>
 	" | Out-File $EmailBody -Encoding ASCII -Append
 }
 
@@ -103,12 +104,12 @@ If ($UseHTML) {
 	If ($hMSSpamCount -gt 0) {
 		Email "HMS Daily Spam Reject count: <span style=`"background-color:red;color:white;font-weight:bold;font-family:Courier New;`">$hMSSpamCount</span>"
 	} Else {
-		Email "HMS Daily Spam Reject count: 0"
+		Email "HMS Daily Spam Reject count: <span style=`"background-color:green;color:white;font-weight:bold;font-family:Courier New;`">0</span>"
 	}
 	If ($hMSVirusCount -gt 0) {
 		Email "HMS Daily Viruses Removed count: <span style=`"background-color:red;color:white;font-weight:bold;font-family:Courier New;`">$hMSVirusCount</span>"
 	} Else {
-		Email "HMS Daily Viruses Removed count: 0"
+		Email "HMS Daily Viruses Removed count: <span style=`"background-color:green;color:white;font-weight:bold;font-family:Courier New;`">0</span>"
 	}
 	Email " "
 } Else {
@@ -132,7 +133,6 @@ If ($UseSA) {
 	Debug "Updating SpamAssassin"
 	$BeginSAUpdate = Get-Date
 	$SAUD = "$SADir\sa-update.exe"
-	$SACF = "$SADir\UpdateChannels.txt"
 	Try {
 		$SAUpdate = & $SAUD -v --nogpg --channel updates.spamassassin.org | Out-String
 		Debug $SAUpdate
@@ -266,7 +266,11 @@ If ($UseMySQL) {
 	$MySQLDumpPass = "-p$MySQLPass"
 	$MySQLDumpFile = "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).sql"
 	Try {
-		& $MySQLDump -u $MySQLUser $MySQLDumpPass hMailServer --result-file=$MySQLDumpFile
+		If ($BackupAllMySQLDatbase) {
+			& $MySQLDump -u $MySQLUser $MySQLDumpPass –all-databases --result-file=$MySQLDumpFile
+		} Else {
+			& $MySQLDump -u $MySQLUser $MySQLDumpPass $MySQLDatabase --result-file=$MySQLDumpFile
+		}
 		$BackupSuccess++
 		Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
 	}
@@ -372,13 +376,13 @@ If ($PruneBackups) {
 If ($PruneMessages) {PruneMessages}
 
 <#  Feed Beyesian database  #>
-If ($FeedBayes) {FeedBayes}
+If ($UseSA) {If ($FeedBayes) {FeedBayes}}
 
 <#  Compress backup into 7z archives  #>
-MakeArchive
+If ($UseSevenZip) {MakeArchive}
 
 <#  Upload archive to LetsUpload.io  #>
-OffsiteUpload
+If ($UseLetsUpload) {OffsiteUpload}
 
 <#  Finish up and send email  #>
 Debug "hMailServer Backup & Upload routine completed in $(ElapsedTime $StartScript)"
