@@ -250,17 +250,18 @@ If ($UseMySQL) {
 	$Error.Clear()
 	Debug "----------------------------"
 	Debug "Begin backing up MySQL"
-	Debug "Deleting old MySQL database dump"
-	Try {
-		Remove-Item "$BackupTempDir\hMailData\*.sql"
-		Debug "Old MySQL database successfully deleted"
+	If (Test-Path "$BackupTempDir\hMailData\MYSQLDump_*.sql") {
+		Debug "Deleting old MySQL database dump"
+		Try {
+			Remove-Item "$BackupTempDir\hMailData\*.sql"
+			Debug "Old MySQL database successfully deleted"
+		}
+		Catch {
+			$Err = $Error[0]
+			Debug "[ERROR] Old MySQL database delete : $Err"
+			Email "[ERROR] Old MySQL database delete : Check Debug Log"
+		}
 	}
-	Catch {
-		$Err = $Error[0]
-		Debug "[ERROR] Old MySQL database delete : $Err"
-		Email "[ERROR] Old MySQL database delete : Check Debug Log"
-	}
-	Debug "Backing up MySQL"
 	$MySQLDump = "$MySQLBINdir\mysqldump.exe"
 	$MySQLDumpPass = "-p$MySQLPass"
 	$MySQLDumpFile = "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).sql"
@@ -294,17 +295,13 @@ If ($UseMySQL) {
 <#  Backup Miscellaneous Files  #>
 Debug "----------------------------"
 Debug "Begin backing up miscellaneous files"
-# Debug "Deleting old backup copy of miscellaneous files"
 $MiscBackupFiles | ForEach {
 	$MBUF = $_
 	$MBUFName = Split-Path -Path $MBUF -Leaf
 	If (Test-Path "$BackupTempDir\hMailData\$MBUFName") {
 		Remove-Item -Force -Path "$BackupTempDir\hMailData\$MBUFName"
-		# Debug "Previously backed up $MBUFName successfully deleted"
-	} Else {
-		Debug "No previous backup copy of $MBUFName exists"
-	}
-	# Debug "Backing up server copy of $MBUFName"
+		Debug "Previously backed up $MBUFName successfully deleted"
+	} 
 	If (Test-Path $MBUF) {
 		Try {
 			Copy-Item -Path $MBUF -Destination "$BackupTempDir\hMailData"

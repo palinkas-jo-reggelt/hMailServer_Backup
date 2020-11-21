@@ -1,6 +1,8 @@
 # hMailServer Offsite Backup
  hMailServer backup routine that also uploads to LetsUpload.io
  
+ Discussion thread: https://hmailserver.com/forum/viewtopic.php?f=9&t=35447
+ 
 # What does it do?
  1) Stops hMailServer and (if in use) SpamAssassin Services
  2) Updates SpamAssassin (if in use)
@@ -28,3 +30,5 @@
  
 # Notes
  Config switch $DeleteEmptySubFolders will delete empty subfolders found within matching message pruning folders. Run hMailServerBackupPruneMessagesTEST.ps1 with $DoDelete = FALSE to see how your system will react.
+ 
+ Config has option to call 7-zip from system path or full path to executable. I don't know why, but system path is 3-4 faster than calling the full path. 

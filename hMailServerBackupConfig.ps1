@@ -76,6 +76,7 @@ $MySQLPass             = "supersecretpassword"  # hMailServer database password
 $MySQLPort             = 3306                   # MySQL port
 
 <###   7-ZIP VARIABLES   ###>
+$SevenZipInSystemPath  = $True                  # If false, will call full path to executable - seems to run much faster when called from the system path
 $VolumeSize            = "100m"                 # Size of archive volume parts - maximum 200m recommended - valid suffixes for size units are (b|k|m|g)
 $ArchivePassword       = "supersecretpassword"  # Password to 7z archive
 

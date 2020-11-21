@@ -190,7 +190,11 @@ Function MakeArchive {
 	$VolumeSwitch = "-v$VolumeSize"
 	$PWSwitch = "-p$ArchivePassword"
 	Try {
-		$SevenZip = & cmd /c $SevenZipExe a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
+		If ($SevenZipInSystemPath) {
+			$SevenZip = & cmd /c 7z a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
+		} Else {
+			$SevenZip = & cmd /c $SevenZipExe a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
+		}
 		Debug $SevenZip
 		Debug "Archive creation finished in $(ElapsedTime $StartArchive)"
 		Debug "Wait a few seconds to make sure archive is finished"
@@ -447,6 +451,8 @@ Function GetBayesMessages ($Folder) {
 	$ArraySpamToFeed = @()
 	$HamFedMessages = 0
 	$SpamFedMessages = 0
+	$LearnedHamMessagesFolder = 0
+	$LearnedSpamMessagesFolder = 0
 	$FolderName = $Folder.Name
 	If ($Folder.Messages.Count -gt 0) {
 		If ($Folder.Name -match $HamFolders) {
@@ -475,7 +481,10 @@ Function GetBayesMessages ($Folder) {
 				If ($DoSpamC) {
 					$SpamC = & cmd /c "`"$SADir\spamc.exe`" -d `"$SAHost`" -p `"$SAPort`" -L ham < `"$FileName`""
 					$SpamCResult = Out-String -InputObject $SpamC
-					If ($SpamCResult -match "Message successfully un/learned") {$LearnedHamMessages++}
+					If ($SpamCResult -match "Message successfully un/learned") {
+						$LearnedHamMessages++
+						$LearnedHamMessagesFolder++
+					}
 					If (($SpamCResult -notmatch "Message successfully un/learned") -and ($SpamCResult -notmatch "Message was already un/learned")) {
 						Throw $SpamCResult
 					}
@@ -498,7 +507,10 @@ Function GetBayesMessages ($Folder) {
 				If ($DoSpamC) {
 					$SpamC = & cmd /c "`"$SADir\spamc.exe`" -d `"$SAHost`" -p `"$SAPort`" -L spam < `"$FileName`""
 					$SpamCResult = Out-String -InputObject $SpamC
-					If ($SpamCResult -match "Message successfully un/learned") {$LearnedSpamMessages++}
+					If ($SpamCResult -match "Message successfully un/learned") {
+						$LearnedSpamMessages++
+						$LearnedSpamMessagesFolder++
+					}
 					If (($SpamCResult -notmatch "Message successfully un/learned") -and ($SpamCResult -notmatch "Message was already un/learned")) {
 						Throw $SpamCResult
 					}
@@ -515,10 +527,10 @@ Function GetBayesMessages ($Folder) {
 		}
 	}
 	If ($HamFedMessages -gt 0) {
-		Debug "Fed $HamFedMessages HAM message$(Plural $HamFedMessages) from $FolderName in $AccountAddress"
+		Debug "Learned tokens from $LearnedHamMessagesFolder of $HamFedMessages HAM message$(Plural $HamFedMessages) fed from $FolderName in $AccountAddress"
 	}
 	If ($SpamFedMessages -gt 0) {
-		Debug "Fed $SpamFedMessages SPAM message$(Plural $SpamFedMessages) from $FolderName in $AccountAddress"
+		Debug "Learned tokens from $LearnedSpamMessagesFolder of $SpamFedMessages SPAM message$(Plural $SpamFedMessages) fed from $FolderName in $AccountAddress"
 	}
 	$ArraySpamToFeed.Clear()
 }
@@ -529,7 +541,7 @@ Function FeedBayes {
 	
 	$BeginFeedingBayes = Get-Date
 	Debug "----------------------------"
-	Debug "Begin deleting messages older than $DaysBeforeDelete days"
+	Debug "Begin learning Bayes tokens from messages newer than $BayesDays days"
 	If (-not($DoSpamC)) {
 		Debug "SpamC disabled - Test Run ONLY"
 	}
@@ -582,7 +594,7 @@ Function FeedBayes {
 	} Else {
 		If ($TotalHamFedMessages -gt 0) {
 			Debug "Bayes learned from $LearnedHamMessages of $TotalHamFedMessages HAM message$(Plural $TotalHamFedMessages) found"
-			Email "[OK] Bayes learned from $LearnedHamMessages of $TotalHamFedMessages HAM message$(Plural $TotalHamFedMessages) found"
+			Email "[OK] Bayes HAM learn from $LearnedHamMessages of $TotalHamFedMessages message$(Plural $TotalHamFedMessages)"
 		} Else {
 			Debug "No HAM messages older than $BayesDays days to feed to Bayes"
 			Email "[OK] No HAM messages older than $BayesDays days to feed to Bayes"
@@ -594,7 +606,7 @@ Function FeedBayes {
 	} Else {
 		If ($TotalSpamFedMessages -gt 0) {
 			Debug "Bayes learned from $LearnedSpamMessages of $TotalSpamFedMessages SPAM message$(Plural $TotalSpamFedMessages) found"
-			Email "[OK] Bayes learned from $LearnedSpamMessages of $TotalSpamFedMessages SPAM message$(Plural $TotalSpamFedMessages) found"
+			Email "[OK] Bayes SPAM learn from $LearnedSpamMessages of $TotalSpamFedMessages message$(Plural $TotalSpamFedMessages)"
 		} Else {
 			Debug "No SPAM messages older than $BayesDays days to feed to Bayes"
 			Email "[OK] No SPAM messages older than $BayesDays days to feed to Bayes"
