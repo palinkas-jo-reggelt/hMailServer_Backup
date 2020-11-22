@@ -351,60 +351,65 @@ Function PruneMessages {
 	$hMS.Authenticate("Administrator", $hMSAdminPass) | Out-Null
 	
 	$IterateDomains = 0
-	Do {
-		$hMSDomain = $hMS.Domains.Item($IterateDomains)
-		If ($hMSDomain.Active) {
-			$IterateAccounts = 0
-			Do {
-				$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
-				If ($hMSAccount.Active) {
-					$AccountAddress = $hMSAccount.Address
-					$IterateIMAPFolders = 0
-					If ($hMSAccount.IMAPFolders.Count -gt 0) {
-						Do {
-							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
-							If ($hMSIMAPFolder.Name -match $PruneFolders) {
-								If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
-									GetSubFolders $hMSIMAPFolder
-								} # IF SUBFOLDER COUNT > 0
-								GetMessages $hMSIMAPFolder
-							} # IF FOLDERNAME MATCH REGEX
-							Else {
-								GetMatchFolders $hMSIMAPFolder
-							} # IF NOT FOLDERNAME MATCH REGEX
-						$IterateIMAPFolders++
-						} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
-					} # IF IMAPFOLDER COUNT > 0
-				} #IF ACCOUNT ACTIVE
-				$IterateAccounts++
-			} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
-		} # IF DOMAIN ACTIVE
-		$IterateDomains++
-	} Until ($IterateDomains -eq $hMS.Domains.Count)
+	If ($hMS.Domains.Count -gt 0) {
+		Do {
+			$hMSDomain = $hMS.Domains.Item($IterateDomains)
+			If ($hMSDomain.Active) {
+				$IterateAccounts = 0
+				If ($hMSDomain.Accounts.Count -gt 0) {
+					Do {
+						$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
+						If ($hMSAccount.Active) {
+							$AccountAddress = $hMSAccount.Address
+							$IterateIMAPFolders = 0
+							If ($hMSAccount.IMAPFolders.Count -gt 0) {
+								Do {
+									$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
+									If ($hMSIMAPFolder.Name -match $PruneFolders) {
+										If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
+											GetSubFolders $hMSIMAPFolder
+										} # IF SUBFOLDER COUNT > 0
+										GetMessages $hMSIMAPFolder
+									} # IF FOLDERNAME MATCH REGEX
+									Else {
+										GetMatchFolders $hMSIMAPFolder
+									} # IF NOT FOLDERNAME MATCH REGEX
+								$IterateIMAPFolders++
+								} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
+							} # IF IMAPFOLDER COUNT > 0
+						} #IF ACCOUNT ACTIVE
+						$IterateAccounts++
+					} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
+				} # IF ACCOUNT COUNT > 0
+			} # IF DOMAIN ACTIVE
+			$IterateDomains++
+		} Until ($IterateDomains -eq $hMS.Domains.Count)
+	} # IF DOMAIN COUNT > 0
 
+	<#  Report message pruning  #>
 	If ($DeleteMessageErrors -gt 0) {
 		Debug "Finished Message Pruning : $DeleteMessageErrors Errors present"
 		Email "[ERROR] Message Pruning : $DeleteMessageErrors Errors present : Check debug log"
-	} Else {
-		If ($TotalDeletedMessages -gt 0) {
-			Debug "Successfully pruned $TotalDeletedMessages message$(Plural $TotalDeletedMessages) in $(ElapsedTime $BeginDeletingOldMessages)"
-			Email "[OK] Pruned $TotalDeletedMessages message$(Plural $TotalDeletedMessages)"
-		} Else {
-			Debug "No messages older than $DaysBeforeDelete days to prune"
-			Email "[OK] No messages older than $DaysBeforeDelete days to prune"
-		}
 	}
-	If ($DeleteFolderErrors -gt 0) {
-		Debug "Deleting Empty Folders : $DeleteFolderErrors Error$(Plural $DeleteFolderErrors) present"
-		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Error$(Plural $DeleteFolderErrors) present : Check debug log"
+	If ($TotalDeletedMessages -gt 0) {
+		Debug "Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+		Email "[OK] Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
 	} Else {
-		If ($TotalDeletedFolders -gt 0) {
-			Debug "Successfully pruned $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
-			Email "[INFO] Deleted $TotalDeletedFolders empty subfolder$(Plural $TotalDeletedFolders)"
-		} Else {
-			Debug "No empty subfolders deleted"
-			# Email "[OK] No empty subfolders to delete"
-		}
+		Debug "No messages older than $DaysBeforeDelete days to prune"
+		Email "[OK] No messages older than $DaysBeforeDelete days to prune"
+	}
+
+	<#  Report folder pruning  #>
+	If ($DeleteFolderErrors -gt 0) {
+		Debug "Deleting Empty Folders : $DeleteFolderErrors Errors present"
+		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Errors present : Check debug log"
+	}
+	If ($TotalDeletedFolders -gt 0) {
+		Debug "Deleted $TotalDeletedFolders empty subfolders"
+		Email "[OK] Deleted $TotalDeletedFolders empty subfolders"
+	} Else {
+		Debug "No empty subfolders deleted"
+		# Email "[OK] No empty subfolders deleted"
 	}
 }
 
@@ -562,67 +567,74 @@ Function FeedBayes {
 	$SAPort = $hMS.Settings.AntiSpam.SpamAssassinPort
 	
 	$IterateDomains = 0
-	Do {
-		$hMSDomain = $hMS.Domains.Item($IterateDomains)
-		If ($hMSDomain.Active) {
-			$IterateAccounts = 0
-			Do {
-				$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
-				If ($hMSAccount.Active) {
-					$AccountAddress = $hMSAccount.Address
-					$IterateIMAPFolders = 0
-					If ($hMSAccount.IMAPFolders.Count -gt 0) {
-						Do {
-							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
-							If (($hMSIMAPFolder.Name -match $HamFolders) -or ($hMSIMAPFolder.Name -match $SpamFolders)) {
-								If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
-									GetBayesSubFolders $hMSIMAPFolder
-								} # IF SUBFOLDER COUNT > 0
-								GetBayesMessages $hMSIMAPFolder
-							} # IF FOLDERNAME MATCH REGEX
-							Else {
-								GetBayesMatchFolders $hMSIMAPFolder
-							} # IF NOT FOLDERNAME MATCH REGEX
-						$IterateIMAPFolders++
-						} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
-					} # IF IMAPFOLDER COUNT > 0
-				} #IF ACCOUNT ACTIVE
-				$IterateAccounts++
-			} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
-		} # IF DOMAIN ACTIVE
-		$IterateDomains++
-	} Until ($IterateDomains -eq $hMS.Domains.Count)
+	If ($hMS.Domains.Count -gt 0) {
+		Do {
+			$hMSDomain = $hMS.Domains.Item($IterateDomains)
+			If ($hMSDomain.Active) {
+				$IterateAccounts = 0
+				If ($hMSDomain.Accounts.Count -gt 0) {
+					Do {
+						$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
+						If ($hMSAccount.Active) {
+							$AccountAddress = $hMSAccount.Address
+							$IterateIMAPFolders = 0
+							If ($hMSAccount.IMAPFolders.Count -gt 0) {
+								Do {
+									$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
+									If (($hMSIMAPFolder.Name -match $HamFolders) -or ($hMSIMAPFolder.Name -match $SpamFolders)) {
+										If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
+											GetBayesSubFolders $hMSIMAPFolder
+										} # IF SUBFOLDER COUNT > 0
+										GetBayesMessages $hMSIMAPFolder
+									} # IF FOLDERNAME MATCH REGEX
+									Else {
+										GetBayesMatchFolders $hMSIMAPFolder
+									} # IF NOT FOLDERNAME MATCH REGEX
+								$IterateIMAPFolders++
+								} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
+							} # IF IMAPFOLDER COUNT > 0
+						} #IF ACCOUNT ACTIVE
+						$IterateAccounts++
+					} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
+				} # IF ACCOUNT COUNT > 0
+			} # IF DOMAIN ACTIVE
+			$IterateDomains++
+		} Until ($IterateDomains -eq $hMS.Domains.Count)
+	} # IF DOMAIN COUNT > 0
 
 	Debug "----------------------------"
 	Debug "Finished feeding $($TotalHamFedMessages + $TotalSpamFedMessages) messages to Bayes in $(ElapsedTime $BeginFeedingBayes)"
+	Debug "----------------------------"
 	
 	If ($HamFedMessageErrors -gt 0) {
 		Debug "Errors feeding HAM to SpamC : $HamFedMessageErrors Error$(Plural $HamFedMessageErrors) present"
 		Email "[ERROR] HAM SpamC : $HamFedMessageErrors Errors present : Check debug log"
-	} Else {
-		If ($TotalHamFedMessages -gt 0) {
-			Debug "Bayes learned from $LearnedHamMessages of $TotalHamFedMessages HAM message$(Plural $TotalHamFedMessages) found"
-			Email "[OK] Bayes HAM learn from $LearnedHamMessages of $TotalHamFedMessages message$(Plural $TotalHamFedMessages)"
-		} Else {
-			Debug "No HAM messages older than $BayesDays days to feed to Bayes"
-			Email "[OK] No HAM messages older than $BayesDays days to feed to Bayes"
-		}
 	}
+	If ($TotalHamFedMessages -gt 0) {
+		Debug "Bayes learned from $LearnedHamMessages of $TotalHamFedMessages HAM message$(Plural $TotalHamFedMessages) found"
+		Email "[OK] Bayes HAM learn from $LearnedHamMessages of $TotalHamFedMessages message$(Plural $TotalHamFedMessages)"
+	} Else {
+		Debug "No HAM messages older than $BayesDays days to feed to Bayes"
+		Email "[OK] No HAM messages older than $BayesDays days to feed to Bayes"
+	}
+
 	If ($SpamFedMessageErrors -gt 0) {
 		Debug "Errors feeding SPAM to SpamC : $SpamFedMessageErrors Error$(Plural $SpamFedMessageErrors) present"
 		Email "[ERROR] SPAM SpamC : $SpamFedMessageErrors Errors present : Check debug log"
-	} Else {
-		If ($TotalSpamFedMessages -gt 0) {
-			Debug "Bayes learned from $LearnedSpamMessages of $TotalSpamFedMessages SPAM message$(Plural $TotalSpamFedMessages) found"
-			Email "[OK] Bayes SPAM learn from $LearnedSpamMessages of $TotalSpamFedMessages message$(Plural $TotalSpamFedMessages)"
-		} Else {
-			Debug "No SPAM messages older than $BayesDays days to feed to Bayes"
-			Email "[OK] No SPAM messages older than $BayesDays days to feed to Bayes"
-		}
 	}
+	If ($TotalSpamFedMessages -gt 0) {
+		Debug "Bayes learned from $LearnedSpamMessages of $TotalSpamFedMessages SPAM message$(Plural $TotalSpamFedMessages) found"
+		Email "[OK] Bayes SPAM learn from $LearnedSpamMessages of $TotalSpamFedMessages message$(Plural $TotalSpamFedMessages)"
+	} Else {
+		Debug "No SPAM messages older than $BayesDays days to feed to Bayes"
+		Email "[OK] No SPAM messages older than $BayesDays days to feed to Bayes"
+	}
+
 	Try {
 		& cmd /c "`"$SADir\sa-learn.exe`" --backup > `"$BayesBackupLocation`""
-		Debug "----------------------------"
+		If ((Get-Item -Path $BayesBackupLocation).LastWriteTime -lt ((Get-Date).AddSeconds(-30))) {
+			Throw "Unknown Error backing up Bayes database"
+		}
 		Debug "Successfully backed up Bayes database"
 	}
 	Catch {

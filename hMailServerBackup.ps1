@@ -28,8 +28,8 @@ Try {
 	.("$PSScriptRoot\hMailServerBackupFunctions.ps1")
 }
 Catch {
-	Write-Output "$(Get-Date) -f G) : ERROR : Unable to load supporting PowerShell Scripts" | out-file "$PSScriptRoot\PSError.log" -append
-	Write-Output "$(Get-Date) -f G) : ERROR : $Error" | out-file "$PSScriptRoot\PSError.log" -append
+	Write-Output "$(Get-Date -f G) : ERROR : Unable to load supporting PowerShell Scripts" | Out-File "$PSScriptRoot\PSError.log" -Append
+	Write-Output "$(Get-Date -f G) : ERROR : $Error" | Out-File "$PSScriptRoot\PSError.log" -Append
 	Exit
 }
 
@@ -139,7 +139,7 @@ If ($UseSA) {
 		Debug "Finished updating SpamAssassin in $(ElapsedTime $BeginSAUpdate)"
 		Email "[OK] SpamAssassin updated"
 		If ($SAUpdate -match "Update finished, no fresh updates were available"){
-			Email "[INFO] No fresh pdates available"
+			Email "[INFO] No fresh updates available"
 		}
 	}
 	Catch {
