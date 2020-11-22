@@ -267,7 +267,7 @@ If ($UseMySQL) {
 	$MySQLDumpFile = "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).sql"
 	Try {
 		If ($BackupAllMySQLDatbase) {
-			& $MySQLDump -u $MySQLUser $MySQLDumpPass –all-databases --result-file=$MySQLDumpFile
+			& $MySQLDump -u $MySQLUser $MySQLDumpPass --all-databases --result-file=$MySQLDumpFile
 		} Else {
 			& $MySQLDump -u $MySQLUser $MySQLDumpPass $MySQLDatabase --result-file=$MySQLDumpFile
 		}
