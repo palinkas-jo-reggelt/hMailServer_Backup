@@ -393,7 +393,7 @@ Function PruneMessages {
 	}
 	If ($TotalDeletedMessages -gt 0) {
 		Debug "Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
-		Email "[OK] Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+		Email "[OK] Pruned $TotalDeletedMessages messages older than $DaysBeforeDelete days"
 	} Else {
 		Debug "No messages older than $DaysBeforeDelete days to prune"
 		Email "[OK] No messages older than $DaysBeforeDelete days to prune"
@@ -612,10 +612,10 @@ Function FeedBayes {
 	}
 	If ($TotalHamFedMessages -gt 0) {
 		Debug "Bayes learned from $LearnedHamMessages of $TotalHamFedMessages HAM message$(Plural $TotalHamFedMessages) found"
-		Email "[OK] Bayes HAM learn from $LearnedHamMessages of $TotalHamFedMessages message$(Plural $TotalHamFedMessages)"
+		Email "[OK] Bayes ham learned from $LearnedHamMessages of $TotalHamFedMessages message$(Plural $TotalHamFedMessages)"
 	} Else {
 		Debug "No HAM messages older than $BayesDays days to feed to Bayes"
-		Email "[OK] No HAM messages older than $BayesDays days to feed to Bayes"
+		Email "[OK] No ham messages older than $BayesDays days to feed to Bayes"
 	}
 
 	If ($SpamFedMessageErrors -gt 0) {
@@ -624,10 +624,10 @@ Function FeedBayes {
 	}
 	If ($TotalSpamFedMessages -gt 0) {
 		Debug "Bayes learned from $LearnedSpamMessages of $TotalSpamFedMessages SPAM message$(Plural $TotalSpamFedMessages) found"
-		Email "[OK] Bayes SPAM learn from $LearnedSpamMessages of $TotalSpamFedMessages message$(Plural $TotalSpamFedMessages)"
+		Email "[OK] Bayes spam learned from $LearnedSpamMessages of $TotalSpamFedMessages message$(Plural $TotalSpamFedMessages)"
 	} Else {
 		Debug "No SPAM messages older than $BayesDays days to feed to Bayes"
-		Email "[OK] No SPAM messages older than $BayesDays days to feed to Bayes"
+		Email "[OK] No spam messages older than $BayesDays days to feed to Bayes"
 	}
 
 	Try {
