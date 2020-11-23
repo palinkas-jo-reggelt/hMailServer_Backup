@@ -246,17 +246,16 @@ Function GetSubFolders ($Folder) {
 	If ($PruneEmptySubFolders) {
 		$ArrayDeletedFolders | ForEach {
 			$CheckFolder = $Folder.SubFolders.ItemByDBID($_)
-			$FolderName = $CheckFolder.Name
 			If (SubFoldersEmpty $CheckFolder) {
 				Try {
 					If ($DoDelete) {$Folder.SubFolders.DeleteByDBID($_)}
 					$TotalDeletedFolders++
-					Debug "Deleted empty subfolder $FolderName in $AccountAddress"
+					Debug "Deleted empty subfolder $($CheckFolder.Name) in $AccountAddress"
 				}
 				Catch {
 					$Err = $Error[0]
 					$DeleteFolderErrors++
-					Debug "[ERROR] Deleting empty subfolder $FolderName in $AccountAddress"
+					Debug "[ERROR] Deleting empty subfolder $($CheckFolder.Name) in $AccountAddress"
 					Debug "[ERROR] : $Err"
 				}
 				$Error.Clear()
@@ -316,7 +315,6 @@ Function GetMessages ($Folder) {
 		} Until ($IterateMessage -eq $Folder.Messages.Count)
 	}
 	$ArrayMessagesToDelete | ForEach {
-		$AFolderName = $Folder.Name
 		Try {
 			If ($DoDelete) {$Folder.Messages.DeleteByDBID($_)}
 			$DeletedMessages++
@@ -325,13 +323,13 @@ Function GetMessages ($Folder) {
 		Catch {
 			$Err = $Error[0]
 			$DeleteMessageErrors++
-			Debug "[ERROR] Deleting messages from folder $AFolderName in $AccountAddress"
+			Debug "[ERROR] Deleting messages from folder $($Folder.Name) in $AccountAddress"
 			Debug "[ERROR] $Err"
 		}
 		$Error.Clear()
 	}
 	If ($DeletedMessages -gt 0) {
-		Debug "Deleted $DeletedMessages message$(Plural $DeletedMessages) from $AFolderName in $AccountAddress"
+		Debug "Deleted $DeletedMessages message$(Plural $DeletedMessages) from $($Folder.Name) in $AccountAddress"
 	}
 	$ArrayMessagesToDelete.Clear()
 }
@@ -466,7 +464,6 @@ Function GetBayesMessages ($Folder) {
 	$SpamFedMessages = 0
 	$LearnedHamMessagesFolder = 0
 	$LearnedSpamMessagesFolder = 0
-	$FolderName = $Folder.Name
 	If ($Folder.Messages.Count -gt 0) {
 		If ($Folder.Name -match $HamFolders) {
 			Do {
@@ -540,10 +537,10 @@ Function GetBayesMessages ($Folder) {
 		}
 	}
 	If ($HamFedMessages -gt 0) {
-		Debug "Learned tokens from $LearnedHamMessagesFolder of $HamFedMessages HAM message$(Plural $HamFedMessages) fed from $FolderName in $AccountAddress"
+		Debug "Learned tokens from $LearnedHamMessagesFolder of $HamFedMessages HAM message$(Plural $HamFedMessages) fed from $($Folder.Name) in $AccountAddress"
 	}
 	If ($SpamFedMessages -gt 0) {
-		Debug "Learned tokens from $LearnedSpamMessagesFolder of $SpamFedMessages SPAM message$(Plural $SpamFedMessages) fed from $FolderName in $AccountAddress"
+		Debug "Learned tokens from $LearnedSpamMessagesFolder of $SpamFedMessages SPAM message$(Plural $SpamFedMessages) fed from $($Folder.Name) in $AccountAddress"
 	}
 	$ArraySpamToFeed.Clear()
 }
