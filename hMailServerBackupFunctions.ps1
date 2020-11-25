@@ -523,7 +523,7 @@ Function GetBayesMessages ($Folder) {
 			}
 		}
 		Catch {
-			$SpamFed0MessageErrors++
+			$SpamFedMessageErrors++
 			$Err = $Error[0]
 			Debug "[ERROR] Feeding SPAM message $FileName in $($hMSAccount.Address)"
 			Debug "[ERROR] $Err"
