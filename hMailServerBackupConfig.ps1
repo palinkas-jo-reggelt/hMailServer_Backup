@@ -42,7 +42,6 @@ $SevenZipDir           = "C:\Program Files\7-Zip"  # Path to 7-Zip Install Direc
 $MailDataDir           = "C:\HMS-DATA"          # hMailServer Data Dir
 $BackupTempDir         = "C:\HMS-BACKUP-TEMP"   # Temporary backup folder for RoboCopy to compare
 $BackupLocation        = "C:\HMS-BACKUP"        # Location archive files will be stored
-$BayesBackupLocation   = "C:\bayes_backup"      # Bayes backup folder
 $MySQLBINdir           = "C:\xampp\mysql\bin"   # MySQL BIN folder location
 
 <###   HMAILSERVER COM VARIABLES   ###>
@@ -63,15 +62,20 @@ $PruneMessages         = $True                  # True will run message pruning 
 $PruneSubFolders       = $True                  # True will prune all folders in levels below name matching folders
 $PruneEmptySubFolders  = $True                  # True will delete empty subfolders below the matching level unless a subfolder within contains messages
 $DaysBeforeDelete      = 30                     # Number of days to keep messages in pruned folders
+$SkipAccountPruning    = "user@dom.com|a@b.com" # User accounts to skip - uses regex - If not used, leave blank (not "") or it will match EVERYTHING!
+$SkipDomainPruning     = "domain.tld|dom2.com"  # Domains to skip - uses regex - If not used, leave blank (not "") or it will match EVERYTHING!
 $PruneFolders          = "Trash|Deleted|Junk|Spam|Folder-[0-9]{6}|Unsubscribes"  # Names of IMAP folders you want to cleanup - uses regex
 
 <###   FEED BAYES VARIABLES   ###>
 $DoSpamC               = $True                  # FOR TESTING - set to false to run and report results without feeding SpamC with spam/ham
 $FeedBayes             = $True                  # True will run Bayes feeding routine
 $BayesSubFolders       = $True                  # True will feed messages from regex name matching subfolders
+$BayesDays             = 7                      # Number of days worth of spam/ham to feed to bayes
 $HamFolders            = "INBOX|Ham"            # Ham folders to feed messages to spamC for bayes database - uses regex
 $SpamFolders           = "Spam|Junk"            # Spam folders to feed messages to spamC for bayes database - uses regex
-$BayesDays             = 7                      # Number of days worth of spam/ham to feed to bayes
+$SkipAccountBayes      = "user@dom.com|a@b.com" # User accounts to skip - uses regex - If not used, leave blank (not "") or it will match EVERYTHING!
+$SkipDomainBayes       = "domain.tld|dom2.com"  # Domains to skip - uses regex - If not used, leave blank (not "") or it will match EVERYTHING!
+$BayesBackupLocation   = "C:\bayes_backup"      # Bayes backup FILE
 
 <###   MySQL VARIABLES   ###>
 $UseMySQL              = $True                  # Specifies whether database used is MySQL

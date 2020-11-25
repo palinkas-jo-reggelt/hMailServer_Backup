@@ -250,12 +250,12 @@ Function GetSubFolders ($Folder) {
 				Try {
 					If ($DoDelete) {$Folder.SubFolders.DeleteByDBID($_)}
 					$TotalDeletedFolders++
-					Debug "Deleted empty subfolder $($CheckFolder.Name) in $AccountAddress"
+					Debug "Deleted empty subfolder $($CheckFolder.Name) in $($hMSAccount.Address)"
 				}
 				Catch {
 					$Err = $Error[0]
 					$DeleteFolderErrors++
-					Debug "[ERROR] Deleting empty subfolder $($CheckFolder.Name) in $AccountAddress"
+					Debug "[ERROR] Deleting empty subfolder $($CheckFolder.Name) in $($hMSAccount.Address)"
 					Debug "[ERROR] : $Err"
 				}
 				$Error.Clear()
@@ -323,13 +323,13 @@ Function GetMessages ($Folder) {
 		Catch {
 			$Err = $Error[0]
 			$DeleteMessageErrors++
-			Debug "[ERROR] Deleting messages from folder $($Folder.Name) in $AccountAddress"
+			Debug "[ERROR] Deleting messages from folder $($Folder.Name) in $($hMSAccount.Address)"
 			Debug "[ERROR] $Err"
 		}
 		$Error.Clear()
 	}
 	If ($DeletedMessages -gt 0) {
-		Debug "Deleted $DeletedMessages message$(Plural $DeletedMessages) from $($Folder.Name) in $AccountAddress"
+		Debug "Deleted $DeletedMessages message$(Plural $DeletedMessages) from $($Folder.Name) in $($hMSAccount.Address)"
 	}
 	$ArrayMessagesToDelete.Clear()
 }
@@ -348,41 +348,35 @@ Function PruneMessages {
 	$hMS = New-Object -COMObject hMailServer.Application
 	$hMS.Authenticate("Administrator", $hMSAdminPass) | Out-Null
 	
-	$IterateDomains = 0
 	If ($hMS.Domains.Count -gt 0) {
+		$IterateDomains = 0
 		Do {
 			$hMSDomain = $hMS.Domains.Item($IterateDomains)
-			If ($hMSDomain.Active) {
+			If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch $SkipDomainPruning) -and ($hMSDomain.Accounts.Count -gt 0)) {
 				$IterateAccounts = 0
-				If ($hMSDomain.Accounts.Count -gt 0) {
-					Do {
-						$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
-						If ($hMSAccount.Active) {
-							$AccountAddress = $hMSAccount.Address
-							$IterateIMAPFolders = 0
-							If ($hMSAccount.IMAPFolders.Count -gt 0) {
-								Do {
-									$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
-									If ($hMSIMAPFolder.Name -match $PruneFolders) {
-										If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
-											GetSubFolders $hMSIMAPFolder
-										} # IF SUBFOLDER COUNT > 0
-										GetMessages $hMSIMAPFolder
-									} # IF FOLDERNAME MATCH REGEX
-									Else {
-										GetMatchFolders $hMSIMAPFolder
-									} # IF NOT FOLDERNAME MATCH REGEX
-								$IterateIMAPFolders++
-								} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
-							} # IF IMAPFOLDER COUNT > 0
-						} #IF ACCOUNT ACTIVE
-						$IterateAccounts++
-					} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
-				} # IF ACCOUNT COUNT > 0
-			} # IF DOMAIN ACTIVE
+				Do {
+					$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
+					If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch $SkipAccountPruning) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
+						$IterateIMAPFolders = 0
+						Do {
+							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
+							If ($hMSIMAPFolder.Name -match $PruneFolders) {
+								If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
+									GetSubFolders $hMSIMAPFolder
+								}
+								GetMessages $hMSIMAPFolder
+							} Else {
+								GetMatchFolders $hMSIMAPFolder
+							}
+						$IterateIMAPFolders++
+						} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
+					}
+					$IterateAccounts++
+				} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
+			}
 			$IterateDomains++
 		} Until ($IterateDomains -eq $hMS.Domains.Count)
-	} # IF DOMAIN COUNT > 0
+	}
 
 	<#  Report message pruning  #>
 	If ($DeleteMessageErrors -gt 0) {
@@ -413,7 +407,6 @@ Function PruneMessages {
 
 <#  Feed Bayes  #>
 
-<#  Set Bayes variables  #>
 Set-Variable -Name TotalHamFedMessages -Value 0 -Option AllScope
 Set-Variable -Name TotalSpamFedMessages -Value 0 -Option AllScope
 Set-Variable -Name HamFedMessageErrors -Value 0 -Option AllScope
@@ -506,7 +499,7 @@ Function GetBayesMessages ($Folder) {
 		Catch {
 			$HamFedMessageErrors++
 			$Err = $Error[0]
-			Debug "[ERROR] Feeding HAM message $FileName in $AccountAddress"
+			Debug "[ERROR] Feeding HAM message $FileName in $($hMSAccount.Address)"
 			Debug "[ERROR] $Err"
 		}
 	}
@@ -532,15 +525,15 @@ Function GetBayesMessages ($Folder) {
 		Catch {
 			$SpamFed0MessageErrors++
 			$Err = $Error[0]
-			Debug "[ERROR] Feeding SPAM message $FileName in $AccountAddress"
+			Debug "[ERROR] Feeding SPAM message $FileName in $($hMSAccount.Address)"
 			Debug "[ERROR] $Err"
 		}
 	}
 	If ($HamFedMessages -gt 0) {
-		Debug "Learned tokens from $LearnedHamMessagesFolder of $HamFedMessages HAM message$(Plural $HamFedMessages) fed from $($Folder.Name) in $AccountAddress"
+		Debug "Learned tokens from $LearnedHamMessagesFolder of $HamFedMessages HAM message$(Plural $HamFedMessages) fed from $($Folder.Name) in $($hMSAccount.Address)"
 	}
 	If ($SpamFedMessages -gt 0) {
-		Debug "Learned tokens from $LearnedSpamMessagesFolder of $SpamFedMessages SPAM message$(Plural $SpamFedMessages) fed from $($Folder.Name) in $AccountAddress"
+		Debug "Learned tokens from $LearnedSpamMessagesFolder of $SpamFedMessages SPAM message$(Plural $SpamFedMessages) fed from $($Folder.Name) in $($hMSAccount.Address)"
 	}
 	$ArraySpamToFeed.Clear()
 }
@@ -563,41 +556,35 @@ Function FeedBayes {
 	$SAHost = $hMS.Settings.AntiSpam.SpamAssassinHost
 	$SAPort = $hMS.Settings.AntiSpam.SpamAssassinPort
 	
-	$IterateDomains = 0
 	If ($hMS.Domains.Count -gt 0) {
+		$IterateDomains = 0
 		Do {
 			$hMSDomain = $hMS.Domains.Item($IterateDomains)
-			If ($hMSDomain.Active) {
+			If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch $SkipDomainBayes) -and ($hMSDomain.Accounts.Count -gt 0)) {
 				$IterateAccounts = 0
-				If ($hMSDomain.Accounts.Count -gt 0) {
-					Do {
-						$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
-						If ($hMSAccount.Active) {
-							$AccountAddress = $hMSAccount.Address
-							$IterateIMAPFolders = 0
-							If ($hMSAccount.IMAPFolders.Count -gt 0) {
-								Do {
-									$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
-									If (($hMSIMAPFolder.Name -match $HamFolders) -or ($hMSIMAPFolder.Name -match $SpamFolders)) {
-										If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
-											GetBayesSubFolders $hMSIMAPFolder
-										} # IF SUBFOLDER COUNT > 0
-										GetBayesMessages $hMSIMAPFolder
-									} # IF FOLDERNAME MATCH REGEX
-									Else {
-										GetBayesMatchFolders $hMSIMAPFolder
-									} # IF NOT FOLDERNAME MATCH REGEX
-								$IterateIMAPFolders++
-								} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
-							} # IF IMAPFOLDER COUNT > 0
-						} #IF ACCOUNT ACTIVE
-						$IterateAccounts++
-					} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
-				} # IF ACCOUNT COUNT > 0
-			} # IF DOMAIN ACTIVE
+				Do {
+					$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
+					If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch $SkipAccountBayes) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
+						$IterateIMAPFolders = 0
+						Do {
+							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
+							If (($hMSIMAPFolder.Name -match $HamFolders) -or ($hMSIMAPFolder.Name -match $SpamFolders)) {
+								If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
+									GetBayesSubFolders $hMSIMAPFolder
+								}
+								GetBayesMessages $hMSIMAPFolder
+							} Else {
+								GetBayesMatchFolders $hMSIMAPFolder
+							}
+						$IterateIMAPFolders++
+						} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
+					}
+					$IterateAccounts++
+				} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
+			}
 			$IterateDomains++
 		} Until ($IterateDomains -eq $hMS.Domains.Count)
-	} # IF DOMAIN COUNT > 0
+	}
 
 	Debug "----------------------------"
 	Debug "Finished feeding $($TotalHamFedMessages + $TotalSpamFedMessages) messages to Bayes in $(ElapsedTime $BeginFeedingBayes)"
