@@ -233,10 +233,12 @@ Try {
 		$Failed = $_.Failed
 		$Extras = $_.Extras
 	}
+	If (($Mismatch -gt 0) -or ($Failed -gt 0)) {
+		Throw "Robocopy MISMATCH or FAILED exists"
+	}
 	$BackupSuccess++
 	Debug "Robocopy backup success: $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
-	Email "[OK] hMailServer DataDir backed up:"
-	Email "$Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
+	Email "[OK] DataDir backed up: $Copied new, $Extras del"
 }
 Catch {
 	$Err = $Error[0]
