@@ -153,32 +153,22 @@ If ($UseSA) {
 If ($CycleLogs) {
 	Debug "----------------------------"
 	Debug "Cycling Logs"
-	If (Test-Path "$hMSDir\Logs\hmailserver_events.log") {
-		$NewEventLogName = "hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"
-		Try {
-			Rename-Item "$hMSDir\Logs\hmailserver_events.log" $NewEventLogName -ErrorAction Stop
-			Debug "Cylcled hmailserver_events_$((Get-Date).ToString('yyyy-MM-dd')).log"
-			} 
-		Catch {
-			$Err = $Error[0]
-			Debug "Event log cylcling ERROR : $Err"
-		}
-	} Else {
-		Debug "hmailserver_events.log not found"
-	}
-	If ($UseSA) {
-		If (Test-Path "$hMSDir\Logs\spamd.log") {
-			$NewSpamdLogName = "spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"
+	$LogsToCycle | ForEach {
+		$FullName = (Get-Item $_).FullName
+		$BaseName = (Get-Item $_).BaseName
+		$FileExt = (Get-Item $_).Extension
+		If (Test-Path $FullName) {
+			$NewLogName = $BaseName+"_"+$((Get-Date).ToString('yyyy-MM-dd'))+$FileExt
 			Try {
-				Rename-Item "$hMSDir\Logs\spamd.log" $NewSpamdLogName -ErrorAction Stop
-				Debug "Cylcled spamd_$((Get-Date).ToString('yyyy-MM-dd')).log"
-			} 
+				Rename-Item $FullName $NewLogName -ErrorAction Stop
+				Debug "Cylcled $NewLogName"
+				} 
 			Catch {
 				$Err = $Error[0]
-				Debug "SpamAssassin log cycling ERROR : $Err"
+				Debug "[ERROR] Log cylcling ERROR : $Err"
 			}
 		} Else {
-			Debug "spamd.log not found"
+			Debug "[ERROR] $FullName not found"
 		}
 	}
 }

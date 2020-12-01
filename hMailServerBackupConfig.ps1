@@ -99,9 +99,15 @@ $APIKey2               = "qm7gQH6xiUA42HkTwEMauWYOb16lfXMbkmg6aWNzlO0dLtny95bCSR
 $IsPublic              = 0                      # 0 = Private, 1 = Unlisted, 2 = Public in site search
 
 <###   HMAILSERVER LOG VARIABLES   ###>
-$CycleLogs             = $True                  # Cycle SpamAssassin and Event logs nightly
 $PruneLogs             = $True                  # If true, will delete logs in hMailServer \Logs folder older than N days
 $DaysToKeepLogs        = 10                     # Number of days to keep old hMailServer Logs
+
+<###   CYCLE LOGS VARIABLES   ###>              # Array of logs to cycle
+$CycleLogs             = $True                  # Cycle SpamAssassin and Event logs nightly
+$LogsToCycle           = @(
+	"C:\hMailServer\Logs\hmailserver_events.log"
+	"C:\hMailServer\Logs\spamd.log"
+)
 
 <###   EMAIL VARIABLES   ###>
 $EmailFrom             = "notify@mydomain.tld"
