@@ -102,8 +102,8 @@ $IsPublic              = 0                      # 0 = Private, 1 = Unlisted, 2 =
 $PruneLogs             = $True                  # If true, will delete logs in hMailServer \Logs folder older than N days
 $DaysToKeepLogs        = 10                     # Number of days to keep old hMailServer Logs
 
-<###   CYCLE LOGS VARIABLES   ###>              # Array of logs to cycle
-$CycleLogs             = $True                  # Cycle SpamAssassin and Event logs nightly
+<###   CYCLE LOGS VARIABLES   ###>              # Array of logs to cycle - Full file path required - not limited to hmailserver log dir
+$CycleLogs             = $True                  # True will cycle logs
 $LogsToCycle           = @(
 	"C:\hMailServer\Logs\hmailserver_events.log"
 	"C:\hMailServer\Logs\spamd.log"

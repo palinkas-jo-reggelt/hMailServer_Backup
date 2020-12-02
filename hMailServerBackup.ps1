@@ -149,64 +149,6 @@ If ($UseSA) {
 	}
 }
 
-<#  Cycle Logs  #>
-If ($CycleLogs) {
-	Debug "----------------------------"
-	Debug "Cycling Logs"
-	$LogsToCycle | ForEach {
-		$FullName = (Get-Item $_).FullName
-		$BaseName = (Get-Item $_).BaseName
-		$FileExt = (Get-Item $_).Extension
-		If (Test-Path $FullName) {
-			$NewLogName = $BaseName+"_"+$((Get-Date).ToString('yyyy-MM-dd'))+$FileExt
-			Try {
-				Rename-Item $FullName $NewLogName -ErrorAction Stop
-				Debug "Cylcled $NewLogName"
-				} 
-			Catch {
-				$Err = $Error[0]
-				Debug "[ERROR] Log cylcling ERROR : $Err"
-			}
-		} Else {
-			Debug "[ERROR] $FullName not found"
-		}
-	}
-}
-
-<#  Prune hMailServer logs  #>
-If ($PruneLogs) {
-	$FilesToDel = Get-ChildItem -Path "$hMSDir\Logs" | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepLogs))}
-	$CountDelLogs = $FilesToDel.Count
-	If ($CountDelLogs -gt 0){
-		Debug "----------------------------"
-		Debug "Begin pruning hMailServer logs older than $DaysToKeepLogs days"
-		$EnumCountDelLogs = 0
-		Try {
-			$FilesToDel | ForEach {
-				$FullName = $_.FullName
-				$Name = $_.Name
-				If (Test-Path $_.FullName -PathType Leaf) {
-					Remove-Item -Force -Path $FullName
-					Debug "Deleted file  : $Name"
-					$EnumCountDelLogs++
-				}
-			}
-			If ($CountDelLogs -eq $EnumCountDelLogs) {
-				Debug "Successfully pruned $CountDelLogs hMailServer log$(Plural $CountDelLogs)"
-				Email "[OK] Pruned hMailServer logs older than $DaysToKeepLogs days"
-			} Else {
-				Debug "[ERROR] Prune hMailServer logs : Filecount does not match delete count"
-				Email "[ERROR] Prune hMailServer logs : Check Debug Log"
-			}
-		}
-		Catch {
-			$Err = $Error[0]
-			Debug "[ERROR] Prune hMailServer logs : $Err"
-			Email "[ERROR] Prune hMailServer logs : Check Debug Log"
-		}
-	}
-}
-
 <#  Backup files using RoboCopy  #>
 $BackupSuccess = 0
 Debug "----------------------------"
@@ -321,9 +263,67 @@ If ($BackupSuccess -eq (2 + ($MiscBackupFiles).Count)) {
 	Email "[ERROR] Backup count mismatch : Check Debug Log"
 }
 
+<#  Cycle Logs  #>
+If ($CycleLogs) {
+	Debug "----------------------------"
+	Debug "Cycling Logs"
+	$LogsToCycle | ForEach {
+		$FullName = (Get-Item $_).FullName
+		$BaseName = (Get-Item $_).BaseName
+		$FileExt = (Get-Item $_).Extension
+		If (Test-Path $FullName) {
+			$NewLogName = $BaseName+"_"+$((Get-Date).ToString('yyyy-MM-dd'))+$FileExt
+			Try {
+				Rename-Item $FullName $NewLogName -ErrorAction Stop
+				Debug "Cylcled $NewLogName"
+				} 
+			Catch {
+				$Err = $Error[0]
+				Debug "[ERROR] Log cylcling ERROR : $Err"
+			}
+		} Else {
+			Debug "[ERROR] $FullName not found"
+		}
+	}
+}
+
 <#  Restart SpamAssassin and hMailServer  #>
 If ($UseSA) {ServiceStart $SAServiceName}
 ServiceStart $hMSServiceName
+
+<#  Prune hMailServer logs  #>
+If ($PruneLogs) {
+	$FilesToDel = Get-ChildItem -Path "$hMSDir\Logs" | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepLogs))}
+	$CountDelLogs = $FilesToDel.Count
+	If ($CountDelLogs -gt 0){
+		Debug "----------------------------"
+		Debug "Begin pruning hMailServer logs older than $DaysToKeepLogs days"
+		$EnumCountDelLogs = 0
+		Try {
+			$FilesToDel | ForEach {
+				$FullName = $_.FullName
+				$Name = $_.Name
+				If (Test-Path $_.FullName -PathType Leaf) {
+					Remove-Item -Force -Path $FullName
+					Debug "Deleted file  : $Name"
+					$EnumCountDelLogs++
+				}
+			}
+			If ($CountDelLogs -eq $EnumCountDelLogs) {
+				Debug "Successfully pruned $CountDelLogs hMailServer log$(Plural $CountDelLogs)"
+				Email "[OK] Pruned hMailServer logs older than $DaysToKeepLogs days"
+			} Else {
+				Debug "[ERROR] Prune hMailServer logs : Filecount does not match delete count"
+				Email "[ERROR] Prune hMailServer logs : Check Debug Log"
+			}
+		}
+		Catch {
+			$Err = $Error[0]
+			Debug "[ERROR] Prune hMailServer logs : $Err"
+			Email "[ERROR] Prune hMailServer logs : Check Debug Log"
+		}
+	}
+}
 
 <#  Prune backups  #>
 If ($PruneBackups) {
