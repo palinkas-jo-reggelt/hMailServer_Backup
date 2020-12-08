@@ -694,6 +694,7 @@ Function OffsiteUpload {
 	$CountArchVol = (Get-ChildItem "$BackupLocation\$BackupName").Count
 	Debug "There are $CountArchVol files to upload"
 	$UploadCounter = 1
+	$TotalUploadErrors = 0
 
 	Get-ChildItem "$BackupLocation\$BackupName" | ForEach {
 
@@ -777,12 +778,17 @@ Function OffsiteUpload {
 					}
 					Try {
 						$DeleteFile = Invoke-RestMethod -Method GET $URIDF -Body $DFBody -ContentType 'application/json; charset=utf-8' 
+						Debug "Mismatched upload deleted. Trying again."
 					}
 					Catch {
 						$Err = $Error[0]
-						Debug "File delete ERROR : $Err"
+						Debug "Mismatched upload file delete ERROR : $Err"
+						Email "[ERROR] Un-Repairable Upload Mismatch! See debug log. Quitting script."
+						EmailResults
+						Exit
 					}
 				}
+				$TotalUploadErrors++
 			}
 			$UploadTries++
 		} Until (($UploadTries -eq ($MaxUploadTries + 1)) -or ($UStatus -match "success"))
@@ -823,6 +829,7 @@ Function OffsiteUpload {
 		If ($RemoteFileCount -eq $CountArchVol) {
 			Debug "----------------------------"
 			Debug "Finished uploading $CountArchVol file$(Plural $CountArchVol) in $(ElapsedTime $BeginOffsiteUpload)"
+			If ($TotalUploadErrors -gt 0){Debug "$TotalUploadErrors upload error$(Plural $TotalUploadErrors) successfully resolved"}
 			Debug "Upload sucessful. $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
 			Email "[OK] Offsite backup upload:"
 			Email "[OK] $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
