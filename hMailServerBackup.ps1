@@ -376,6 +376,23 @@ If ($UseSevenZip) {MakeArchive}
 <#  Upload archive to LetsUpload.io  #>
 If ($UseLetsUpload) {OffsiteUpload}
 
+<#  Check for updates  #>
+$GitHubVersion = [decimal](Invoke-WebRequest -Method GET -Uri https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content
+If (Test-Path "$PSScriptRoot\version.txt") {
+	$LocalVersion = [decimal](Get-Content "$PSScriptRoot\version.txt")
+} Else {
+	$LocalVersion = 0.1
+}
+If ($LocalVersion -lt $GitHubVersion) {
+	Debug "----------------------------"
+	Debug "Upgrade available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
+	If ($UseHTML) {
+		Email "[INFO] Upgrade available at <a href=`"https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup`">GitHub</a>"
+	} Else {
+		Email "[INFO] Upgrade available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
+	}
+}
+
 <#  Finish up and send email  #>
 Debug "hMailServer Backup & Upload routine completed in $(ElapsedTime $StartScript)"
 Email " "
