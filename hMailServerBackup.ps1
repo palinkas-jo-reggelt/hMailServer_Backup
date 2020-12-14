@@ -377,15 +377,17 @@ If ($UseSevenZip) {MakeArchive}
 If ($UseLetsUpload) {OffsiteUpload}
 
 <#  Check for updates  #>
-$GitHubVersion = [decimal](Invoke-WebRequest -Method GET -Uri https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content
+$GitHubVersion = $LocalVersion = $NULL
+Try {[decimal]$GitHubVersion = (Invoke-WebRequest -Method GET -Uri https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content}
+Catch {[decimal]$GitHubVersion = 0}
 If (Test-Path "$PSScriptRoot\version.txt") {
-	$LocalVersion = [decimal](Get-Content "$PSScriptRoot\version.txt")
+	[decimal]$LocalVersion = (Get-Content "$PSScriptRoot\version.txt")
 } Else {
-	$LocalVersion = 0.1
+	[decimal]$LocalVersion = 0
 }
 If ($LocalVersion -lt $GitHubVersion) {
 	Debug "----------------------------"
-	Debug "Upgrade available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
+	Debug "[INFO] Upgrade available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
 	If ($UseHTML) {
 		Email "[INFO] Upgrade available at <a href=`"https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup`">GitHub</a>"
 	} Else {
