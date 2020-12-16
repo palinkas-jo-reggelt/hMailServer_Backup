@@ -264,105 +264,17 @@ If ($BackupSuccess -eq (2 + ($MiscBackupFiles).Count)) {
 }
 
 <#  Cycle Logs  #>
-If ($CycleLogs) {
-	Debug "----------------------------"
-	Debug "Cycling Logs"
-	$LogsToCycle | ForEach {
-		$FullName = (Get-Item $_).FullName
-		$BaseName = (Get-Item $_).BaseName
-		$FileExt = (Get-Item $_).Extension
-		If (Test-Path $FullName) {
-			$NewLogName = $BaseName+"_"+$((Get-Date).ToString('yyyy-MM-dd'))+$FileExt
-			Try {
-				Rename-Item $FullName $NewLogName -ErrorAction Stop
-				Debug "Cylcled $NewLogName"
-				} 
-			Catch {
-				$Err = $Error[0]
-				Debug "[ERROR] Log cylcling ERROR : $Err"
-			}
-		} Else {
-			Debug "[ERROR] $FullName not found"
-		}
-	}
-}
+If ($CycleLogs) {CycleLogs}
 
 <#  Restart SpamAssassin and hMailServer  #>
 If ($UseSA) {ServiceStart $SAServiceName}
 ServiceStart $hMSServiceName
 
 <#  Prune hMailServer logs  #>
-If ($PruneLogs) {
-	$FilesToDel = Get-ChildItem -Path "$hMSDir\Logs" | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepLogs))}
-	$CountDelLogs = $FilesToDel.Count
-	If ($CountDelLogs -gt 0){
-		Debug "----------------------------"
-		Debug "Begin pruning hMailServer logs older than $DaysToKeepLogs days"
-		$EnumCountDelLogs = 0
-		Try {
-			$FilesToDel | ForEach {
-				$FullName = $_.FullName
-				$Name = $_.Name
-				If (Test-Path $_.FullName -PathType Leaf) {
-					Remove-Item -Force -Path $FullName
-					Debug "Deleted file  : $Name"
-					$EnumCountDelLogs++
-				}
-			}
-			If ($CountDelLogs -eq $EnumCountDelLogs) {
-				Debug "Successfully pruned $CountDelLogs hMailServer log$(Plural $CountDelLogs)"
-				Email "[OK] Pruned hMailServer logs older than $DaysToKeepLogs days"
-			} Else {
-				Debug "[ERROR] Prune hMailServer logs : Filecount does not match delete count"
-				Email "[ERROR] Prune hMailServer logs : Check Debug Log"
-			}
-		}
-		Catch {
-			$Err = $Error[0]
-			Debug "[ERROR] Prune hMailServer logs : $Err"
-			Email "[ERROR] Prune hMailServer logs : Check Debug Log"
-		}
-	}
-}
+If ($PruneLogs) {PruneLogs}
 
 <#  Prune backups  #>
-If ($PruneBackups) {
-	$FilesToDel = Get-ChildItem -Path $BackupLocation  | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepBackups))}
-	$CountDel = $FilesToDel.Count
-	If ($CountDel -gt 0) {
-		Debug "----------------------------"
-		Debug "Begin pruning local backups older than $DaysToKeepBackups days"
-		$EnumCountDel = 0
-		Try {
-			$FilesToDel | ForEach {
-				$FullName = $_.FullName
-				$Name = $_.Name
-				If (Test-Path $_.FullName -PathType Container) {
-					Remove-Item -Force -Recurse -Path $FullName
-					Debug "Deleted folder: $Name"
-					$EnumCountDel++
-				}
-				If (Test-Path $_.FullName -PathType Leaf) {
-					Remove-Item -Force -Path $FullName
-					Debug "Deleted file  : $Name"
-					$EnumCountDel++
-				}
-			}
-			If ($CountDel -eq $EnumCountDel) {
-				Debug "Successfully pruned $CountDel item$(Plural $CountDel)"
-				Email "[OK] Pruned backups older than $DaysToKeepBackups days"
-			} Else {
-				Debug "[ERROR] Prune backups : Filecount does not match delete count"
-				Email "[ERROR] Prune backups : Check Debug Log"
-			}
-		}
-		Catch {
-			$Err = $Error[0]
-			Debug "[ERROR] Prune backups : $Err"
-			Email "[ERROR] Prune backups : Check Debug Log"
-		}
-	}
-}
+If ($PruneBackups) {PruneBackups}
 
 <#  Prune messages/empty folders older than N number of days  #>
 If ($PruneMessages) {PruneMessages}
@@ -377,25 +289,10 @@ If ($UseSevenZip) {MakeArchive}
 If ($UseLetsUpload) {OffsiteUpload}
 
 <#  Check for updates  #>
-$GitHubVersion = $LocalVersion = $NULL
-Try {[decimal]$GitHubVersion = (Invoke-WebRequest -Method GET -Uri https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content}
-Catch {[decimal]$GitHubVersion = 0}
-If (Test-Path "$PSScriptRoot\version.txt") {
-	[decimal]$LocalVersion = (Get-Content "$PSScriptRoot\version.txt")
-} Else {
-	[decimal]$LocalVersion = 0
-}
-If ($LocalVersion -lt $GitHubVersion) {
-	Debug "----------------------------"
-	Debug "[INFO] Upgrade available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
-	If ($UseHTML) {
-		Email "[INFO] Upgrade available at <a href=`"https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup`">GitHub</a>"
-	} Else {
-		Email "[INFO] Upgrade available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
-	}
-}
+CheckForUpdates
 
 <#  Finish up and send email  #>
+Debug "----------------------------"
 Debug "hMailServer Backup & Upload routine completed in $(ElapsedTime $StartScript)"
 Email " "
 Email "hMailServer Backup & Upload routine completed in $(ElapsedTime $StartScript)"
