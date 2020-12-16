@@ -352,11 +352,11 @@ Function PruneMessages {
 		$IterateDomains = 0
 		Do {
 			$hMSDomain = $hMS.Domains.Item($IterateDomains)
-			If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch $SkipDomainPruning) -and ($hMSDomain.Accounts.Count -gt 0)) {
+			If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch [regex]$SkipDomainPruning) -and ($hMSDomain.Accounts.Count -gt 0)) {
 				$IterateAccounts = 0
 				Do {
 					$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
-					If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch $SkipAccountPruning) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
+					If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch [regex]$SkipAccountPruning) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
 						$IterateIMAPFolders = 0
 						Do {
 							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
@@ -560,11 +560,11 @@ Function FeedBayes {
 		$IterateDomains = 0
 		Do {
 			$hMSDomain = $hMS.Domains.Item($IterateDomains)
-			If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch $SkipDomainBayes) -and ($hMSDomain.Accounts.Count -gt 0)) {
+			If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch [regex]$SkipDomainBayes) -and ($hMSDomain.Accounts.Count -gt 0)) {
 				$IterateAccounts = 0
 				Do {
 					$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
-					If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch $SkipAccountBayes) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
+					If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch [regex]$SkipAccountBayes) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
 						$IterateIMAPFolders = 0
 						Do {
 							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
