@@ -13,9 +13,7 @@
 
 	
 .NOTES
-	7-Zip required - install and place in system path
-	Run at 12:58PM from task scheduler
-	
+	Rename hMailServerBackupConfig.ps1.dist to hMailServerBackupConfig.ps1
 	
 .EXAMPLE
 
@@ -54,12 +52,12 @@ $ServiceTimeout        = 5                      # number of minutes to continue 
 
 <###   PRUNE BACKUPS VARIABLES   ###>
 $PruneBackups          = $True                  # If true, will delete local backups older than N days
-$DaysToKeepBackups     = 5                      # Number of days to keep backups - older backups will be deleted at end of script
+$DaysToKeepBackups     = 5                      # Number of days to keep backups - older backups will be deleted
 
 <###   PRUNE MESSAGES VARIABLES   ###>
-$DoDelete              = $True                  # FOR TESTING - set to false to run and report results without deleting messages and folders
+$DoDelete              = $True                  # FOR TESTING - set to FALSE to run and report results without deleting messages and folders
 $PruneMessages         = $True                  # True will run message pruning routine
-$PruneSubFolders       = $True                  # True will prune all folders in levels below name matching folders
+$PruneSubFolders       = $True                  # True will prune messages in folders levels below name matching folders
 $PruneEmptySubFolders  = $True                  # True will delete empty subfolders below the matching level unless a subfolder within contains messages
 $DaysBeforeDelete      = 30                     # Number of days to keep messages in pruned folders
 $SkipAccountPruning    = "user@dom.com|a@b.com" # User accounts to skip - uses regex - If not used, leave blank (not "") or it will match EVERYTHING!
@@ -67,9 +65,9 @@ $SkipDomainPruning     = "domain.tld|dom2.com"  # Domains to skip - uses regex -
 $PruneFolders          = "Trash|Deleted|Junk|Spam|Folder-[0-9]{6}|Unsubscribes"  # Names of IMAP folders you want to cleanup - uses regex
 
 <###   FEED BAYES VARIABLES   ###>
-$DoSpamC               = $True                  # FOR TESTING - set to false to run and report results without feeding SpamC with spam/ham
+$DoSpamC               = $True                  # FOR TESTING - set to FALSE to run and report results without feeding SpamC with spam/ham
 $FeedBayes             = $True                  # True will run Bayes feeding routine
-$BayesSubFolders       = $True                  # True will feed messages from regex name matching subfolders
+$BayesSubFolders       = $True                  # True will feed messages from subfolders within regex name matching folders
 $BayesDays             = 7                      # Number of days worth of spam/ham to feed to bayes
 $HamFolders            = "INBOX|Ham"            # Ham folders to feed messages to spamC for bayes database - uses regex
 $SpamFolders           = "Spam|Junk"            # Spam folders to feed messages to spamC for bayes database - uses regex
@@ -88,14 +86,14 @@ $MySQLPort             = 3306                   # MySQL port
 <###   7-ZIP VARIABLES   ###>
 $UseSevenZip           = $True                  # True will compress backup files into archive
 $PWProtectedArchive    = $True                  # False = no-password zip archive, True = AES-256 encrypted multi-volume 7z archive
-$SevenZipInSystemPath  = $True                  # If false, will call full path to executable - seems to run much faster when called from the system path
+$SevenZipInSystemPath  = $True                  # If false, will call full path to executable - seems to run faster when called from the system path
 $VolumeSize            = "100m"                 # Size of archive volume parts - maximum 200m recommended - valid suffixes for size units are (b|k|m|g)
 $ArchivePassword       = "supersecretpassword"  # Password to 7z archive
 
 <###   LETSUPLOAD API VARIABLES   ###>
 $UseLetsUpload         = $True                  # True will run upload routine
-$APIKey1               = "BYMDFZkQpzaj1DZpTHgQx48CLWZZSF5teG61FYJrVSLsGkwBiB2EGCaBkTCJLpoB"
-$APIKey2               = "qm7gQH6xiUA42HkTwEMauWYOb16lfXMbkmg6aWNzlO0dLtny95bCSRIrFTyyYOEP"
+$APIKey1               = "BYMDFZkQpzaj1DZpTHgQx48CLWZZSF5teG61FYJrVSLsGkwBiB2EGCaBkTCJLpoB"  # Get key from letsupload.io
+$APIKey2               = "qm7gQH6xiUA42HkTwEMauWYOb16lfXMbkmg6aWNzlO0dLtny95bCSRIrFTyyYOEP"  # Get key from letsupload.io
 $IsPublic              = 0                      # 0 = Private, 1 = Unlisted, 2 = Public in site search
 
 <###   HMAILSERVER LOG VARIABLES   ###>
@@ -103,7 +101,7 @@ $PruneLogs             = $True                  # If true, will delete logs in h
 $DaysToKeepLogs        = 10                     # Number of days to keep old hMailServer Logs
 
 <###   CYCLE LOGS VARIABLES   ###>              # Array of logs to cycle - Full file path required - not limited to hmailserver log dir
-$CycleLogs             = $True                  # True will cycle logs
+$CycleLogs             = $True                  # True will cycle logs (rename with today's date)
 $LogsToCycle           = @(
 	"C:\hMailServer\Logs\hmailserver_events.log"
 	"C:\hMailServer\Logs\spamd.log"
