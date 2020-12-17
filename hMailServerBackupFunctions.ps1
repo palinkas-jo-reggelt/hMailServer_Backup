@@ -954,8 +954,12 @@ Function OffsiteUpload {
 
 Function CheckForUpdates {
 	$GitHubVersion = $LocalVersion = $NULL
-	Try {[decimal]$GitHubVersion = (Invoke-WebRequest -Method GET -Uri https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content}
-	Catch {[decimal]$GitHubVersion = 0}
+	$GitHubVersionTries = 0
+	Do {
+		Try {[decimal]$GitHubVersion = (Invoke-WebRequest -Method GET -URI https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content}
+		Catch {[decimal]$GitHubVersion = 0}
+		$GitHubVersionTries++
+	} Until (($GitHubVersion -gt 0) -or ($GitHubVersionTries -eq 5))
 	If (Test-Path "$PSScriptRoot\version.txt") {
 		[decimal]$LocalVersion = (Get-Content "$PSScriptRoot\version.txt")
 	} Else {
