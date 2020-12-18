@@ -932,7 +932,6 @@ Function OffsiteUpload {
 			Debug "Finished uploading $CountArchVol file$(Plural $CountArchVol) in $(ElapsedTime $BeginOffsiteUpload)"
 			If ($TotalUploadErrors -gt 0){Debug "$TotalUploadErrors upload error$(Plural $TotalUploadErrors) successfully resolved"}
 			Debug "Upload sucessful. $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
-			Email "[OK] Offsite backup upload:"
 			Email "[OK] $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
 		} Else {
 			Debug "----------------------------"
@@ -954,24 +953,46 @@ Function OffsiteUpload {
 
 Function CheckForUpdates {
 	$GitHubVersion = $LocalVersion = $NULL
-	$GitHubVersionTries = 0
+	$GetGitHubVersion = $GetLocalVersion = $False
+	$GitHubVersionTries = 1
 	Do {
-		Try {[decimal]$GitHubVersion = (Invoke-WebRequest -Method GET -URI https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content}
-		Catch {[decimal]$GitHubVersion = 0}
+		Try {
+			$GitHubVersion = [decimal](Invoke-WebRequest -Method GET -URI https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content
+			$GetGitHubVersion = $True
+		}
+		Catch {
+			$Err = $Error[0]
+			Debug "[ERROR] Try $GitHubVersionTries : Obtaining version number: $Err"
+		}
 		$GitHubVersionTries++
-	} Until (($GitHubVersion -gt 0) -or ($GitHubVersionTries -eq 5))
+	} Until (($GitHubVersion -gt 0) -or ($GitHubVersionTries -eq 6))
 	If (Test-Path "$PSScriptRoot\version.txt") {
-		[decimal]$LocalVersion = (Get-Content "$PSScriptRoot\version.txt")
-	} Else {
-		[decimal]$LocalVersion = 0
+		$LocalVersion = [decimal](Get-Content "$PSScriptRoot\version.txt")
+		$GetLocalVersion = $True
 	}
-	If ($LocalVersion -lt $GitHubVersion) {
-		Debug "----------------------------"
-		Debug "[INFO] Upgrade to version $GitHubVersion available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
-		If ($UseHTML) {
-			Email "[INFO] Upgrade to version $GitHubVersion available at <a href=`"https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup`">GitHub</a>"
+	If (($GetGitHubVersion) -and ($GetLocalVersion)) {
+		If ($LocalVersion -lt $GitHubVersion) {
+			Debug "----------------------------"
+			Debug "[INFO] Upgrade to version $GitHubVersion available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
+			If ($UseHTML) {
+				Email "[INFO] Upgrade to version $GitHubVersion available at <a href=`"https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup`">GitHub</a>"
+			} Else {
+				Email "[INFO] Upgrade to version $GitHubVersion available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
+			}
+		}
+	} Else {
+		If ((-not($GetGitHubVersion)) -and (-not($GetLocalVersion))) {
+			Debug "[ERROR] Version test failed : Could not obtain either GitHub nor local version"
+			Email "[ERROR] Version check failed"
+		} ElseIf (-not($GetGitHubVersion)) {
+			Debug "[ERROR] Version test failed : Could not obtain version information from GitHub"
+			Email "[ERROR] Version check failed"
+		} ElseIf (-not($GetLocalVersion)) {
+			Debug "[ERROR] Version test failed : Could not obtain local install version information"
+			Email "[ERROR] Version check failed"
 		} Else {
-			Email "[INFO] Upgrade to version $GitHubVersion available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
+			Debug "[ERROR] Version test failed : Unknown reason - file issue at GitHub"
+			Email "[ERROR] Version check failed"
 		}
 	}
 }
