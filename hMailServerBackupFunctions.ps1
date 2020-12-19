@@ -932,7 +932,11 @@ Function OffsiteUpload {
 			Debug "Finished uploading $CountArchVol file$(Plural $CountArchVol) in $(ElapsedTime $BeginOffsiteUpload)"
 			If ($TotalUploadErrors -gt 0){Debug "$TotalUploadErrors upload error$(Plural $TotalUploadErrors) successfully resolved"}
 			Debug "Upload sucessful. $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
-			Email "[OK] $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
+			If ($UseHTML) {
+				Email "[OK] $CountArchVol file$(Plural $CountArchVol) uploaded to <a href=`"$FolderURL`">letsupload.io</a>"
+			} Else {
+				Email "[OK] $CountArchVol file$(Plural $CountArchVol) uploaded to $FolderURL"
+			}
 		} Else {
 			Debug "----------------------------"
 			Debug "Finished uploading in $(ElapsedTime $StartUpload)"
@@ -952,17 +956,19 @@ Function OffsiteUpload {
 <#  Check for updates  #>
 
 Function CheckForUpdates {
+	Debug "----------------------------"
+	Debug "Checking for script update at GitHub"
 	$GitHubVersion = $LocalVersion = $NULL
 	$GetGitHubVersion = $GetLocalVersion = $False
 	$GitHubVersionTries = 1
 	Do {
 		Try {
-			$GitHubVersion = [decimal](Invoke-WebRequest -Method GET -URI https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content
+			$GitHubVersion = [decimal](Invoke-WebRequest -UseBasicParsing -Method GET -URI https://raw.githubusercontent.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup/main/version.txt).Content
 			$GetGitHubVersion = $True
 		}
 		Catch {
 			$Err = $Error[0]
-			Debug "[ERROR] Try $GitHubVersionTries : Obtaining version number: $Err"
+			Debug "[ERROR] Obtaining GitHub version : Try $GitHubVersionTries : Obtaining version number: $Err"
 		}
 		$GitHubVersionTries++
 	} Until (($GitHubVersion -gt 0) -or ($GitHubVersionTries -eq 6))
@@ -972,7 +978,6 @@ Function CheckForUpdates {
 	}
 	If (($GetGitHubVersion) -and ($GetLocalVersion)) {
 		If ($LocalVersion -lt $GitHubVersion) {
-			Debug "----------------------------"
 			Debug "[INFO] Upgrade to version $GitHubVersion available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
 			If ($UseHTML) {
 				Email "[INFO] Upgrade to version $GitHubVersion available at <a href=`"https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup`">GitHub</a>"
@@ -982,7 +987,7 @@ Function CheckForUpdates {
 		}
 	} Else {
 		If ((-not($GetGitHubVersion)) -and (-not($GetLocalVersion))) {
-			Debug "[ERROR] Version test failed : Could not obtain either GitHub nor local version"
+			Debug "[ERROR] Version test failed : Could not obtain either GitHub nor local version information"
 			Email "[ERROR] Version check failed"
 		} ElseIf (-not($GetGitHubVersion)) {
 			Debug "[ERROR] Version test failed : Could not obtain version information from GitHub"
