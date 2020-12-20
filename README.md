@@ -30,4 +30,4 @@
  Run hMailServerBackup.ps1 from task scheduler at 11:58 PM (time allows for properly cycling logs)
  
 # Notes
- Config has option to call 7-zip from system path or full path to executable. I don't know why, but system path is 3-4 faster than calling the full path. 
+ Config has option to call 7-zip from system path or full path to executable. I don't know why, but system path seems to be faster than calling the full path. 

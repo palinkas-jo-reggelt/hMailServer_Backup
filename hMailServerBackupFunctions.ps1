@@ -744,18 +744,24 @@ Function OffsiteUpload {
 		'key1' = $APIKey1;
 		'key2' = $APIKey2;
 	}
-	Try{
-		$Auth = Invoke-RestMethod -Method GET $URIAuth -Body $AuthBody -ContentType 'application/json; charset=utf-8' 
-		$AccessToken = $Auth.data.access_token
-		$AccountID = $Auth.data.account_id
-		Debug "Access Token : $AccessToken"
-		Debug "Account ID   : $AccountID"
-	}
-	Catch {
-		$Err = $Error[0]
-		Debug "LetsUpload Authentication ERROR : $Err"
+	$GetAccessTokenTries = 1
+	Do {
+		Try{
+			$Auth = Invoke-RestMethod -Method GET $URIAuth -Body $AuthBody -ContentType 'application/json; charset=utf-8' 
+			$AccessToken = $Auth.data.access_token
+			$AccountID = $Auth.data.account_id
+			Debug "Access Token : $AccessToken"
+			Debug "Account ID   : $AccountID"
+		}
+		Catch {
+			$Err = $Error[0]
+			Debug "LetsUpload Authentication ERROR : Try $GetAccessTokenTries : $Err"
+		}
+		$GetAccessTokenTries++
+	} Until (($GetAccessTokenTries -gt 5) -or ($AccessToken -match "^\w{128}$"))
+	If ($GetAccessTokenTries -gt 5) {
+		Debug "LetsUpload Authentication ERROR : Giving up"
 		Email "[ERROR] LetsUpload Authentication : Check Debug Log"
-		Email "[ERROR] LetsUpload Authentication : $Err"
 		EmailResults
 		Exit
 	}
@@ -770,20 +776,26 @@ Function OffsiteUpload {
 		'folder_name' = $BackupName;
 		'is_public' = $IsPublic;
 	}
-	Try {
-		$CreateFolder = Invoke-RestMethod -Method GET $URICF -Body $CFBody -ContentType 'application/json; charset=utf-8' 
-		$CFResponse = $CreateFolder.response
-		$FolderID = $CreateFolder.data.id
-		$FolderURL = $CreateFolder.data.url_folder
-		Debug "Response   : $CFResponse"
-		Debug "Folder ID  : $FolderID"
-		Debug "Folder URL : $FolderURL"
-	}
-	Catch {
-		$Err = $Error[0]
-		Debug "LetsUpload Folder Creation ERROR : $Err"
-		Email "[ERROR] LetsUpload Folder Creation : Check Debug Log"
-		Email "[ERROR] LetsUpload Folder Creation : $Err"
+	$CreateFolderTries = 1
+	Do {
+		Try {
+			$CreateFolder = Invoke-RestMethod -Method GET $URICF -Body $CFBody -ContentType 'application/json; charset=utf-8' 
+			$CFResponse = $CreateFolder.response
+			$FolderID = $CreateFolder.data.id
+			$FolderURL = $CreateFolder.data.url_folder
+			Debug "Response   : $CFResponse"
+			Debug "Folder ID  : $FolderID"
+			Debug "Folder URL : $FolderURL"
+		}
+		Catch {
+			$Err = $Error[0]
+			Debug "LetsUpload Folder Creation ERROR : Try $CreateFolderTries : $Err"
+		}
+		$CreateFolderTries++
+	} Until (($CreateFolderTries -gt 5) -or ($FolderID -match "^\d+$"))
+	If ($CreateFolderTries -gt 5) {
+		Debug "LetsUpload Folder Creation ERROR : Giving up"
+		Email "[ERROR] LetsUpload Folder Creation Error : Check Debug Log"
 		EmailResults
 		Exit
 	}
