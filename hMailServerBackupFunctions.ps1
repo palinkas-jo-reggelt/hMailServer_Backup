@@ -868,7 +868,7 @@ Function OffsiteUpload {
 				$USizeFormatted = "{0:N2}" -f (($USize)/1MB)
 				$UStatus = $Upload._status
 				$UFileID = $upload.data.file_id
-				If ($USize -ne $FileSize) {Throw "Local and remote filesizes do not match!"}
+				If ($USize -ne $FileSize) {Throw "Local and remote filesizes do not match! Local file: $Filesize ::: Remote file: $USize"}
 				Debug "Upload try $UploadTries"
 				Debug "Response : $UResponse"
 				Debug "File ID  : $UFileID"
@@ -996,6 +996,8 @@ Function CheckForUpdates {
 			} Else {
 				Email "[INFO] Upgrade to version $GitHubVersion available at https://github.com/palinkas-jo-reggelt/hMailServer_Offsite_Backup"
 			}
+		} Else {
+			Debug "Backup & Upload script is latest version: $GitHubVersion"
 		}
 	} Else {
 		If ((-not($GetGitHubVersion)) -and (-not($GetLocalVersion))) {
