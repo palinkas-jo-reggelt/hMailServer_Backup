@@ -59,8 +59,7 @@ Function EmailResults {
 		$SMTP.Send($Message)
 	}
 	Catch {
-		$Err = $Error[0]
-		Debug "Email ERROR : $Err"
+		Debug "Email ERROR : $($Error[0])"
 	}
 }
 
@@ -75,8 +74,7 @@ Function GmailResults ($GBody){
 		$SMTP.Send($Message)
 	}
 	Catch {
-		$Err = $Error[0]
-		Debug "Gmail ERROR : $Err"
+		Debug "Gmail ERROR : $($Error[0])"
 	}
 }
 
@@ -210,10 +208,9 @@ Function MakeArchive {
 		Start-Sleep -Seconds 3
 	}
 	Catch {
-		$Err = $Error[0]
-		Debug "[ERROR] Archive Creation : $Err"
+		Debug "[ERROR] Archive Creation : $($Error[0])"
 		Email "[ERROR] Archive Creation : Check Debug Log"
-		Email "[ERROR] Archive Creation : $Err"
+		Email "[ERROR] Archive Creation : $($Error[0])"
 		EmailResults
 		Exit
 	}
@@ -236,8 +233,7 @@ Function CycleLogs {
 				Debug "Cylcled $NewLogName"
 				} 
 			Catch {
-				$Err = $Error[0]
-				Debug "[ERROR] Log cylcling ERROR : $Err"
+				Debug "[ERROR] Log cylcling ERROR : $($Error[0])"
 			}
 		} Else {
 			Debug "[ERROR] $FullName not found"
@@ -273,8 +269,7 @@ Function PruneLogs {
 			}
 		}
 		Catch {
-			$Err = $Error[0]
-			Debug "[ERROR] Prune hMailServer logs : $Err"
+			Debug "[ERROR] Prune hMailServer logs : $($Error[0])"
 			Email "[ERROR] Prune hMailServer logs : Check Debug Log"
 		}
 	}
@@ -313,8 +308,7 @@ Function PruneBackups {
 			}
 		}
 		Catch {
-			$Err = $Error[0]
-			Debug "[ERROR] Prune backups : $Err"
+			Debug "[ERROR] Prune backups : $($Error[0])"
 			Email "[ERROR] Prune backups : Check Debug Log"
 		}
 	}
@@ -354,10 +348,9 @@ Function GetSubFolders ($Folder) {
 					Debug "Deleted empty subfolder $($CheckFolder.Name) in $($hMSAccount.Address)"
 				}
 				Catch {
-					$Err = $Error[0]
 					$DeleteFolderErrors++
 					Debug "[ERROR] Deleting empty subfolder $($CheckFolder.Name) in $($hMSAccount.Address)"
-					Debug "[ERROR] : $Err"
+					Debug "[ERROR] : $($Error[0])"
 				}
 				$Error.Clear()
 			}
@@ -422,10 +415,9 @@ Function GetMessages ($Folder) {
 			$TotalDeletedMessages++
 		}
 		Catch {
-			$Err = $Error[0]
 			$DeleteMessageErrors++
 			Debug "[ERROR] Deleting messages from folder $($Folder.Name) in $($hMSAccount.Address)"
-			Debug "[ERROR] $Err"
+			Debug "[ERROR] $($Error[0])"
 		}
 		$Error.Clear()
 	}
@@ -599,9 +591,8 @@ Function GetBayesMessages ($Folder) {
 		}
 		Catch {
 			$HamFedMessageErrors++
-			$Err = $Error[0]
 			Debug "[ERROR] Feeding HAM message $FileName in $($hMSAccount.Address)"
-			Debug "[ERROR] $Err"
+			Debug "[ERROR] $($Error[0])"
 		}
 	}
 	$ArraySpamToFeed | ForEach {
@@ -625,9 +616,8 @@ Function GetBayesMessages ($Folder) {
 		}
 		Catch {
 			$SpamFedMessageErrors++
-			$Err = $Error[0]
 			Debug "[ERROR] Feeding SPAM message $FileName in $($hMSAccount.Address)"
-			Debug "[ERROR] $Err"
+			Debug "[ERROR] $($Error[0])"
 		}
 	}
 	If ($HamFedMessages -gt 0) {
@@ -723,9 +713,8 @@ Function FeedBayes {
 		Debug "Successfully backed up Bayes database"
 	}
 	Catch {
-		$Err = $Error[0]
 		Debug "----------------------------"
-		Debug "[ERROR] backing up Bayes : $Err"
+		Debug "[ERROR] backing up Bayes : $($Error[0])"
 	}
 }
 
@@ -754,8 +743,7 @@ Function OffsiteUpload {
 			Debug "Account ID   : $AccountID"
 		}
 		Catch {
-			$Err = $Error[0]
-			Debug "LetsUpload Authentication ERROR : Try $GetAccessTokenTries : $Err"
+			Debug "LetsUpload Authentication ERROR : Try $GetAccessTokenTries : $($Error[0])"
 		}
 		$GetAccessTokenTries++
 	} Until (($GetAccessTokenTries -gt 5) -or ($AccessToken -match "^\w{128}$"))
@@ -788,8 +776,7 @@ Function OffsiteUpload {
 			Debug "Folder URL : $FolderURL"
 		}
 		Catch {
-			$Err = $Error[0]
-			Debug "LetsUpload Folder Creation ERROR : Try $CreateFolderTries : $Err"
+			Debug "LetsUpload Folder Creation ERROR : Try $CreateFolderTries : $($Error[0])"
 		}
 		$CreateFolderTries++
 	} Until (($CreateFolderTries -gt 5) -or ($FolderID -match "^\d+$"))
@@ -824,10 +811,8 @@ Function OffsiteUpload {
 			$FileEnc = [System.Text.Encoding]::GetEncoding('ISO-8859-1').GetString($FileBytes);
 		}
 		Catch {
-			$Err = $Error[0]
 			Debug "Error in encoding file $UploadCounter."
-			Debug "$Err"
-			Debug " "
+			Debug "$($Error[0])"
 		}
 		Debug "Finished encoding file in $(ElapsedTime $BeginEnc)";
 		$Boundary = [System.Guid]::NewGuid().ToString(); 
@@ -878,9 +863,8 @@ Function OffsiteUpload {
 				Debug "Finished uploading file in $(ElapsedTime $BeginUpload)"
 			} 
 			Catch {
-				$Err = $Error[0]
 				Debug "Upload try $UploadTries"
-				Debug "[ERROR]  : $Err"
+				Debug "[ERROR]  : $($Error[0])"
 				If (($USize -gt 0) -and ($UFileID -match '\d+')) {
 					Debug "Deleting file due to size mismatch"
 					$URIDF = "https://letsupload.io/api/v2/file/delete"
@@ -894,8 +878,7 @@ Function OffsiteUpload {
 						Debug "Mismatched upload deleted. Trying again."
 					}
 					Catch {
-						$Err = $Error[0]
-						Debug "Mismatched upload file delete ERROR : $Err"
+						Debug "Mismatched upload file delete ERROR : $($Error[0])"
 						Email "[ERROR] Un-Repairable Upload Mismatch! See debug log. Quitting script."
 						EmailResults
 						Exit
@@ -928,10 +911,9 @@ Function OffsiteUpload {
 		$FolderListing = Invoke-RestMethod -Method GET $URIFL -Body $FLBody -ContentType 'application/json; charset=utf-8' 
 	}
 	Catch {
-		$Err = $Error[0]
-		Debug "LetsUpload Folder Listing ERROR : $Err"
+		Debug "LetsUpload Folder Listing ERROR : $($Error[0])"
 		Email "[ERROR] LetsUpload Folder Listing : Check Debug Log"
-		Email "[ERROR] LetsUpload Folder Listing : $Err"
+		Email "[ERROR] LetsUpload Folder Listing : $($Error[0])"
 	}
 	$FolderListingStatus = $FolderListing._status
 	$RemoteFileCount = ($FolderListing.data.files.id).Count
@@ -979,8 +961,7 @@ Function CheckForUpdates {
 			$GetGitHubVersion = $True
 		}
 		Catch {
-			$Err = $Error[0]
-			Debug "[ERROR] Obtaining GitHub version : Try $GitHubVersionTries : Obtaining version number: $Err"
+			Debug "[ERROR] Obtaining GitHub version : Try $GitHubVersionTries : Obtaining version number: $($Error[0])"
 		}
 		$GitHubVersionTries++
 	} Until (($GitHubVersion -gt 0) -or ($GitHubVersionTries -eq 6))

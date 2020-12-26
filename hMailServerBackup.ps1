@@ -29,7 +29,7 @@ Try {
 }
 Catch {
 	Write-Output "$(Get-Date -f G) : ERROR : Unable to load supporting PowerShell Scripts" | Out-File "$PSScriptRoot\PSError.log" -Append
-	Write-Output "$(Get-Date -f G) : ERROR : $Error" | Out-File "$PSScriptRoot\PSError.log" -Append
+	Write-Output "$(Get-Date -f G) : ERROR : $($Error[0])" | Out-File "$PSScriptRoot\PSError.log" -Append
 	Exit
 }
 
@@ -124,6 +124,7 @@ If ($UseHTML) {
 }
 
 <#  Stop hMailServer & SpamAssassin services #>
+$BeginShutdownPeriod = Get-Date
 ServiceStop $hMSServiceName
 If ($UseSA) {ServiceStop $SAServiceName}
 
@@ -143,8 +144,7 @@ If ($UseSA) {
 		}
 	}
 	Catch {
-		$Err = $Error[0]
-		Debug "[ERROR] SpamAssassin update : $Err"
+		Debug "[ERROR] SpamAssassin update : $($Error[0])"
 		Email "[ERROR] SpamAssassin update : Check Debug Log"
 	}
 }
@@ -173,8 +173,7 @@ Try {
 	Email "[OK] DataDir backed up: $Copied new, $Extras del"
 }
 Catch {
-	$Err = $Error[0]
-	Debug "[ERROR] RoboCopy : $Err"
+	Debug "[ERROR] RoboCopy : $($Error[0])"
 	Email "[ERROR] RoboCopy : Check Debug Log"
 }
 
@@ -191,8 +190,7 @@ If ($UseMySQL) {
 			Debug "Old MySQL database successfully deleted"
 		}
 		Catch {
-			$Err = $Error[0]
-			Debug "[ERROR] Old MySQL database delete : $Err"
+			Debug "[ERROR] Old MySQL database delete : $($Error[0])"
 			Email "[ERROR] Old MySQL database delete : Check Debug Log"
 		}
 	}
@@ -209,8 +207,7 @@ If ($UseMySQL) {
 		Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
 	}
 	Catch {
-		$Err = $Error[0]
-		Debug "[ERROR] MySQL Dump : $Err"
+		Debug "[ERROR] MySQL Dump : $($Error[0])"
 		Email "[ERROR] MySQL Dump : Check Debug Log"
 	}
 } Else {
@@ -224,8 +221,7 @@ If ($UseMySQL) {
 		Debug "Internal DB successfully backed up in $(ElapsedTime $BeginDBBackup)"
 	}
 	Catch {
-		$Err = $Error[0]
-		Debug "[ERROR] RoboCopy Internal DB : $Err"
+		Debug "[ERROR] RoboCopy Internal DB : $($Error[0])"
 		Email "[ERROR] RoboCopy Internal DB : Check Debug Log"
 	}
 }
@@ -247,8 +243,7 @@ $MiscBackupFiles | ForEach {
 			Debug "$MBUFName successfully backed up"
 		}
 		Catch {
-			$Err = $Error[0]
-			Debug "[ERROR] $MBUF Backup : $Err"
+			Debug "[ERROR] $MBUF Backup : $($Error[0])"
 			Email "[ERROR] Backup $MBUFName : Check Debug Log"
 		}
 	} Else {
@@ -269,6 +264,8 @@ If ($CycleLogs) {CycleLogs}
 <#  Restart SpamAssassin and hMailServer  #>
 If ($UseSA) {ServiceStart $SAServiceName}
 ServiceStart $hMSServiceName
+Debug "----------------------------"
+Debug "hMailServer was out of service for $(ElapsedTime $BeginShutdownPeriod)"
 
 <#  Prune hMailServer logs  #>
 If ($PruneLogs) {PruneLogs}
