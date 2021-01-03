@@ -705,16 +705,34 @@ Function FeedBayes {
 		Email "[OK] No SPAM messages to feed Bayes"
 	}
 
+	Debug "----------------------------"
 	Try {
-		& cmd /c "`"$SADir\sa-learn.exe`" --backup > `"$BayesBackupLocation`""
-		If ((Get-Item -Path $BayesBackupLocation).LastWriteTime -lt ((Get-Date).AddSeconds(-30))) {
-			Throw "Unknown Error backing up Bayes database"
+		$BayesSync = & cmd /c "`"$SADir\sa-learn.exe`" --sync"
+		$BayesSyncResult = Out-String -InputObject $BayesSync
+		If ([string]::IsNullOrEmpty($BayesSyncResult)) {
+			Throw "Nothing to sync"
 		}
-		Debug "Successfully backed up Bayes database"
+		Debug $BayesSyncResult
 	}
 	Catch {
-		Debug "----------------------------"
+		Debug "[ERROR] Bayes Journal Sync: $($Error[0])"
+	}
+
+	Debug "----------------------------"
+	Try {
+		If (-not(Test-Path $BayesBackupLocation)) {
+			Throw "Bayes backup file does not exist - Check Path"
+		} Else { 
+			& cmd /c "`"$SADir\sa-learn.exe`" --backup > `"$BayesBackupLocation`""
+			If ((Get-Item -Path $BayesBackupLocation).LastWriteTime -lt ((Get-Date).AddSeconds(-30))) {
+				Throw "Unknown Error backing up Bayes database"
+			}
+			Debug "Successfully backed up Bayes database"
+		}
+	}
+	Catch {
 		Debug "[ERROR] backing up Bayes : $($Error[0])"
+		Email "[ERROR] backing up Bayes db"
 	}
 }
 
