@@ -25,7 +25,7 @@ $VerboseConsole        = $True                  # If true, will output debug to 
 $VerboseFile           = $True                  # If true, will output debug to file
 $UseSA                 = $True                  # Specifies whether SpamAssassin is in use
 
-<###   MISCELLANEOUS BACKUP FILES   ###>        # Array of additional miscellaneous files to backup
+<###   MISCELLANEOUS BACKUP FILES   ###>        # Array of additional miscellaneous files to backup - Use full path
 $MiscBackupFiles       = @(
 	"C:\hMailServer\Bin\hMailServer.INI"
 	"C:\hMailServer\Events\EventHandlers.vbs"
@@ -74,6 +74,8 @@ $SpamFolders           = "Spam|Junk"            # Spam folders to feed messages 
 $SkipAccountBayes      = "user@dom.com|a@b.com" # User accounts to skip - uses regex - If not used, leave blank (not "") or it will match EVERYTHING!
 $SkipDomainBayes       = "domain.tld|dom2.com"  # Domains to skip - uses regex - If not used, leave blank (not "") or it will match EVERYTHING!
 $BayesBackupLocation   = "C:\bayes_backup"      # Bayes backup FILE
+$SyncBayesJournal      = $True                  # True will sync bayes_journal after feeding messages to SpamC
+$BackupBayesDatabase   = $True                  # True will backup the bayes database to bayes_backup - NOT insert the file in the backup/upload routine
 
 <###   MySQL VARIABLES   ###>
 $UseMySQL              = $True                  # Specifies whether database used is MySQL
