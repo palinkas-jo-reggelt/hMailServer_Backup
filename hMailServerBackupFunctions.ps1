@@ -184,22 +184,14 @@ Function MakeArchive {
 	Debug "----------------------------"
 	Debug "Create archive : $BackupName"
 	Debug "Archive folder : $BackupTempDir"
-	$SevenZipExe = "$SevenZipDir\7z.exe"
+	$SevenZipExe = "$hMSDir\Bin\7za.exe"
 	$VolumeSwitch = "-v$VolumeSize"
 	$PWSwitch = "-p$ArchivePassword"
 	Try {
 		If ($PWProtectedArchive) {
-			If ($SevenZipInSystemPath) {
-				$SevenZip = & cmd /c 7z a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
-			} Else {
-				$SevenZip = & cmd /c $SevenZipExe a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
-			}
+			$SevenZip = & cmd /c $SevenZipExe a $VolumeSwitch -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mhe=on $PWSwitch "$BackupLocation\$BackupName\$BackupName.7z" "$BackupTempDir\*" | Out-String
 		} Else {
-			If ($SevenZipInSystemPath) {
-				$SevenZip = & cmd /c 7z a -tzip "$BackupLocation\$BackupName\$BackupName.zip" "$BackupTempDir\*" | Out-String
-			} Else {
-				$SevenZip = & cmd /c $SevenZipExe a -tzip "$BackupLocation\$BackupName\$BackupName.zip" "$BackupTempDir\*" | Out-String
-			}
+			$SevenZip = & cmd /c $SevenZipExe a -tzip "$BackupLocation\$BackupName\$BackupName.zip" "$BackupTempDir\*" | Out-String
 		}
 		Debug $SevenZip
 		Debug "Archive creation finished in $(ElapsedTime $StartArchive)"

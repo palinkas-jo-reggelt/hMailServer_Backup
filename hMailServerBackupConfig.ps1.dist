@@ -36,7 +36,6 @@ $MiscBackupFiles       = @(
 $hMSDir                = "C:\hMailServer"       # hMailServer Install Directory
 $SADir                 = "C:\Program Files\JAM Software\SpamAssassin for Windows"  # SpamAssassin Install Directory
 $SAConfDir             = "C:\Program Files\JAM Software\SpamAssassin for Windows\etc\spamassassin"  # SpamAssassin Conf Directory
-$SevenZipDir           = "C:\Program Files\7-Zip"  # Path to 7-Zip Install Directory
 $MailDataDir           = "C:\HMS-DATA"          # hMailServer Data Dir
 $BackupTempDir         = "C:\HMS-BACKUP-TEMP"   # Temporary backup folder for RoboCopy to compare
 $BackupLocation        = "C:\HMS-BACKUP"        # Location archive files will be stored
@@ -97,6 +96,7 @@ $UseLetsUpload         = $True                  # True will run upload routine
 $APIKey1               = "BYMDFZkQpzaj1DZpTHgQx48CLWZZSF5teG61FYJrVSLsGkwBiB2EGCaBkTCJLpoB"  # Get key from letsupload.io
 $APIKey2               = "qm7gQH6xiUA42HkTwEMauWYOb16lfXMbkmg6aWNzlO0dLtny95bCSRIrFTyyYOEP"  # Get key from letsupload.io
 $IsPublic              = 0                      # 0 = Private, 1 = Unlisted, 2 = Public in site search
+$MaxUploadTries        = 5                      # Maximum number of upload tries before giving up
 
 <###   HMAILSERVER LOG VARIABLES   ###>
 $PruneLogs             = $True                  # If true, will delete logs in hMailServer \Logs folder older than N days
