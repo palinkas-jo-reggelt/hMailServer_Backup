@@ -708,7 +708,7 @@ Function FeedBayes {
 			Debug $BayesSyncResult
 		}
 		Catch {
-			Debug "[ERROR] Bayes Journal Sync: $($Error[0])"
+			Debug "[INFO] Bayes Journal Sync: $($Error[0])"
 		}
 	}
 
