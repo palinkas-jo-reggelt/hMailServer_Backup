@@ -7,13 +7,13 @@
 	Configuration for hMailServer Backup
 
 .FUNCTIONALITY
-	Backs up hMailServer, compresses backup and uploads to LetsUpload
+	Backs up hMailServer, compresses backup and uploads to LetsUpload.io
 
 .PARAMETER 
 
 	
 .NOTES
-	Rename hMailServerBackupConfig.ps1.dist to hMailServerBackupConfig.ps1
+	Run at 11:58PM from task scheduler in order to properly cycle log files.
 	
 .EXAMPLE
 
@@ -23,7 +23,9 @@
 <###   USER VARIABLES   ###>
 $VerboseConsole        = $True                  # If true, will output debug to console
 $VerboseFile           = $True                  # If true, will output debug to file
-$UseSA                 = $True                  # Specifies whether SpamAssassin is in use
+
+<###   DATA DIR BACKUP   ###>
+$BackupDataDir         = $True                  # If true, will backup data dir via robocopy
 
 <###   MISCELLANEOUS BACKUP FILES   ###>        # Array of additional miscellaneous files to backup - Use full path
 $MiscBackupFiles       = @(
@@ -43,6 +45,14 @@ $MySQLBINdir           = "C:\xampp\mysql\bin"   # MySQL BIN folder location
 
 <###   HMAILSERVER COM VARIABLES   ###>
 $hMSAdminPass          = "supersecretpassword"  # hMailServer Admin password
+
+<###   SPAMASSASSIN VARIABLES   ###>
+$UseSA                 = $True                  # Specifies whether SpamAssassin is in use
+$UseCustomRuleSets     = $True                  # Specifies whether to download and update KAM.cf
+$SACustomRules         = @(                     # URLs of custom rulesets
+	"https://www.pccc.com/downloads/SpamAssassin/contrib/KAM.cf"
+	"https://www.pccc.com/downloads/SpamAssassin/contrib/nonKAMrules.cf"
+)
 
 <###   WINDOWS SERVICE VARIABLES   ###>
 $hMSServiceName        = "hMailServer"          # Name of hMailServer Service (check windows services to verify exact spelling)
@@ -77,6 +87,7 @@ $SyncBayesJournal      = $True                  # True will sync bayes_journal a
 $BackupBayesDatabase   = $True                  # True will backup the bayes database to bayes_backup - NOT insert the file in the backup/upload routine
 
 <###   MySQL VARIABLES   ###>
+$BackupDB              = $True                  # Specifies whether to run BackupDatabases function (options below)(FALSE will skip)
 $UseMySQL              = $True                  # Specifies whether database used is MySQL
 $BackupAllMySQLDatbase = $True                  # True will backup all databases, not just hmailserver - must use ROOT user for this
 $MySQLDatabase         = "hmailserver"          # MySQL database name
@@ -87,7 +98,6 @@ $MySQLPort             = 3306                   # MySQL port
 <###   7-ZIP VARIABLES   ###>
 $UseSevenZip           = $True                  # True will compress backup files into archive
 $PWProtectedArchive    = $True                  # False = no-password zip archive, True = AES-256 encrypted multi-volume 7z archive
-$SevenZipInSystemPath  = $True                  # If false, will call full path to executable - seems to run faster when called from the system path
 $VolumeSize            = "100m"                 # Size of archive volume parts - maximum 200m recommended - valid suffixes for size units are (b|k|m|g)
 $ArchivePassword       = "supersecretpassword"  # Password to 7z archive
 

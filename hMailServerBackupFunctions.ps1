@@ -13,9 +13,7 @@
 
 	
 .NOTES
-	7-Zip required - install and place in system path
-	Run at 12:58PM from task scheduler
-	
+	Run at 11:58PM from task scheduler in order to properly cycle log files.
 	
 .EXAMPLE
 
@@ -102,7 +100,6 @@ Function ElapsedTime ($EndTime) {
 }
 
 <#  Service start and stop functions  #>
-
 Function ServiceStop ($ServiceName) {
 	<#  Check to see if already stopped  #>
 	$BeginShutdownRoutine = Get-Date
@@ -124,7 +121,7 @@ Function ServiceStop ($ServiceName) {
 		$BeginShutdown = Get-Date
 		Do {
 			Stop-Service $ServiceName
-			# Start-Sleep -Seconds 60
+			# Start-Sleep -Seconds 5
 			(Get-Service $ServiceName).Refresh()
 			$ServiceStatus = (Get-Service $ServiceName).Status
 		} Until (((New-Timespan $BeginShutdown).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Stopped"))
@@ -161,7 +158,7 @@ Function ServiceStart ($ServiceName) {
 		$BeginStartup = Get-Date
 		Do {
 			Start-Service $ServiceName
-			# Start-Sleep -Seconds 60
+			# Start-Sleep -Seconds 5
 			(Get-Service $ServiceName).Refresh()
 			$ServiceStatus = (Get-Service $ServiceName).Status
 		} Until (((New-Timespan $BeginStartup).TotalMinutes -gt $ServiceTimeout) -or ($ServiceStatus -eq "Running"))
@@ -177,8 +174,179 @@ Function ServiceStart ($ServiceName) {
 	}
 }
 
-<#  7-zip archive creation function  #>
+<#  Update SpamAssassin Function  #>
+Function UpdateSpamassassin {
+	Debug "----------------------------"
+	Debug "Updating SpamAssassin"
+	$BeginSAUpdate = Get-Date
+	$SAUD = "$SADir\sa-update.exe"
+	Try {
+		$SAUpdate = & $SAUD -v --nogpg --channel updates.spamassassin.org | Out-String
+		Debug $SAUpdate
+		Debug "Finished updating SpamAssassin in $(ElapsedTime $BeginSAUpdate)"
+		Email "[OK] SpamAssassin updated"
+		If ($SAUpdate -match "Update finished, no fresh updates were available"){
+			Email "[INFO] No fresh updates available"
+		}
+	}
+	Catch {
+		Debug "[ERROR] SpamAssassin update : $($Error[0])"
+		Email "[ERROR] SpamAssassin update : Check Debug Log"
+	}
+}
 
+<#  Update custom rulesets function  #>
+Function UpdateCustomRulesets {
+	Debug "----------------------------"
+	Debug "Updating custom Spamassassin rule sets"
+	$CustomRuleSuccess = 0
+	$CustomRuleSetCount = $SACustomRules.Count
+	$BeginUpdatingCustomRuleSets = Get-Date
+	$SACustomRules | ForEach {
+		$CustomRuleURI = $_
+		$URLFileName = $_.Substring($_.LastIndexOf("/") + 1)
+		$CustomRuleOutput = "$SAConfDir\$URLFileName"
+		Try {
+			Start-BitsTransfer -Source $CustomRuleURI -Destination $CustomRuleOutput -ErrorAction Stop
+			Debug "$URLFileName update successful"
+			$CustomRuleSuccess++
+		}
+		Catch {
+			Debug "[ERROR] : Unable to update $URLFileName : $($Error[0])"
+		}
+	}
+	If ($CustomRuleSuccess -eq $CustomRuleSetCount) {
+		Debug "All $CustomRuleSetCount custom rule sets updated successfully in $(ElapsedTime $BeginUpdatingCustomRuleSets)"
+		Email "[OK] $CustomRuleSetCount Custom rules updated"
+	} Else {
+		Email "[ERROR] : Custom ruleset update unsuccessful : Check debug log"
+	}
+}
+
+<#  Backup hMailServer data dir function  #>
+Function BackuphMailDataDir {
+	$DoBackupDataDir++
+	Debug "----------------------------"
+	Debug "Start backing up datadir with RoboCopy"
+	$BeginRobocopy = Get-Date
+	Try {
+		$RoboCopy = & robocopy $MailDataDir "$BackupTempDir\hMailData" /mir /ndl /r:43200 /np /w:1 | Out-String
+		Debug $RoboCopy
+		Debug "Finished backing up data dir in $(ElapsedTime $BeginRobocopy)"
+		$RoboStats = $RoboCopy.Split([Environment]::NewLine) | Where-Object {$_ -match 'Files\s:\s+\d'} 
+		$RoboStats | ConvertFrom-String -Delimiter "\s+" -PropertyNames Nothing, Files, Colon, Total, Copied, Skipped, Mismatch, Failed, Extras | ForEach {
+			$Copied = $_.Copied
+			$Mismatch = $_.Mismatch
+			$Failed = $_.Failed
+			$Extras = $_.Extras
+		}
+		If (($Mismatch -gt 0) -or ($Failed -gt 0)) {
+			Throw "Robocopy MISMATCH or FAILED exists"
+		}
+		$BackupSuccess++
+		Debug "Robocopy backup success: $Copied new, $Extras deleted, $Mismatch mismatched, $Failed failed"
+		Email "[OK] DataDir backed up: $Copied new, $Extras del"
+	}
+	Catch {
+		Debug "[ERROR] DataDir RoboCopy : $($Error[0])"
+		Email "[ERROR] DataDir RoboCopy : Check Debug Log"
+	}
+}
+	
+<#  Backup database function  #>
+Function BackupDatabases {
+	$BeginDBBackup = Get-Date
+	If ($UseMySQL) {
+		$Error.Clear()
+		$DoBackupDB++
+		Debug "----------------------------"
+		Debug "Begin backing up MySQL"
+		If (Test-Path "$BackupTempDir\hMailData\MYSQLDump_*.sql") {
+			Get-ChildItem "$BackupTempDir\hMailData" | Where {$_.Extension -match "sql"} | ForEach {$OldMySQLDump = $_.Name}
+			Debug "Deleting old MySQL database dump"
+			Try {
+				Remove-Item "$BackupTempDir\hMailData\*.sql"
+				Debug "$OldMySQLDump database successfully deleted"
+			}
+			Catch {
+				Debug "[ERROR] Old MySQL database delete : $($Error[0])"
+				Email "[ERROR] Old MySQL database delete : Check Debug Log"
+			}
+		}
+		$MySQLDump = "$MySQLBINdir\mysqldump.exe"
+		$MySQLDumpPass = "-p$MySQLPass"
+		$MySQLDumpFile = "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).sql"
+		Try {
+			If ($BackupAllMySQLDatbase) {
+				& $MySQLDump -u $MySQLUser $MySQLDumpPass --all-databases --result-file=$MySQLDumpFile
+			} Else {
+				& $MySQLDump -u $MySQLUser $MySQLDumpPass $MySQLDatabase --result-file=$MySQLDumpFile
+			}
+			$BackupSuccess++
+			Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
+		}
+		Catch {
+			Debug "[ERROR] MySQL Dump : $($Error[0])"
+			Email "[ERROR] MySQL Dump : Check Debug Log"
+		}
+	} Else {
+		Debug "----------------------------"
+		Debug "Begin backing up internal database"
+		Debug "Copy internal database to backup folder"
+		Try {
+			$RoboCopyIDB = & robocopy "$hMSDir\Database" "$BackupTempDir\hMailData" /mir /ndl /r:43200 /np /w:1 | Out-String
+			$BackupSuccess++
+			Debug $RoboCopyIDB
+			Debug "Internal DB successfully backed up in $(ElapsedTime $BeginDBBackup)"
+		}
+		Catch {
+			Debug "[ERROR] RoboCopy Internal DB : $($Error[0])"
+			Email "[ERROR] RoboCopy Internal DB : Check Debug Log"
+		}
+	}
+}
+
+<#  Backup misc files function  #>
+Function BackupMiscellaneousFiles {
+	Debug "----------------------------"
+	Debug "Begin backing up miscellaneous files"
+	$MiscBackupFiles | ForEach {
+		$MBUF = $_
+		$MBUFName = Split-Path -Path $MBUF -Leaf
+		If (Test-Path "$BackupTempDir\hMailData\$MBUFName") {
+			Try {
+				Remove-Item -Force -Path "$BackupTempDir\hMailData\$MBUFName"
+				# Debug "Previously backed up $MBUFName successfully deleted"
+			}
+			Catch {
+				Debug "[ERROR] Could not delete previously backed up $MBUFName. Check Debug log for more info."
+			}
+		} 
+		If (Test-Path $MBUF) {
+			Try {
+				Copy-Item -Path $MBUF -Destination "$BackupTempDir\hMailData"
+				$BackupSuccess++
+				$MiscBackupSuccess++
+				Debug "$MBUFName successfully backed up"
+			}
+			Catch {
+				Debug "[ERROR] $MBUF Backup : $($Error[0])"
+				Email "[ERROR] Backup $MBUFName : Check Debug Log"
+			}
+		} Else {
+			Debug "$MBUF copy ERROR : File path not validated"
+		}
+	}
+
+	<#  Report Misc Backup Success  #>
+	If ($MiscBackupSuccess -eq $MiscBackupFiles.Count) {
+		Debug "All $($MiscBackupFiles.Count) misc files backed up"
+	} Else {
+		Debug "[ERROR] Failed to backup $($MiscBackupFiles.Count - $MiscBackupSuccess) of $($MiscBackupFiles.Count) misc files"
+	}
+}
+
+<#  7-zip archive creation function  #>
 Function MakeArchive {
 	$StartArchive = Get-Date
 	Debug "----------------------------"
@@ -210,7 +378,6 @@ Function MakeArchive {
 
 
 <#  Cycle Logs  #>
-
 Function CycleLogs {
 	Debug "----------------------------"
 	Debug "Cycling Logs"
@@ -225,7 +392,7 @@ Function CycleLogs {
 				Debug "Cylcled $NewLogName"
 				} 
 			Catch {
-				Debug "[ERROR] Log cylcling ERROR : $($Error[0])"
+				Debug "[ERROR] $FullName log cycling ERROR : $($Error[0])"
 			}
 		} Else {
 			Debug "[ERROR] $FullName not found"
@@ -234,7 +401,6 @@ Function CycleLogs {
 }
 
 <#  Prune hMailServer logs  #>
-
 Function PruneLogs {
 	$FilesToDel = Get-ChildItem -Path "$hMSDir\Logs" | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepLogs))}
 	$CountDelLogs = $FilesToDel.Count
@@ -268,7 +434,6 @@ Function PruneLogs {
 }
 
 <#  Prune Backups Function  #>
-
 Function PruneBackups {
 	$FilesToDel = Get-ChildItem -Path $BackupLocation  | Where-Object {$_.LastWriteTime -lt ((Get-Date).AddDays(-$DaysToKeepBackups))}
 	$CountDel = $FilesToDel.Count
@@ -307,12 +472,6 @@ Function PruneBackups {
 }
 
 <#  Prune Messages Functions  #> 
-
-Set-Variable -Name TotalDeletedMessages -Value 0 -Option AllScope
-Set-Variable -Name TotalDeletedFolders -Value 0 -Option AllScope
-Set-Variable -Name DeleteMessageErrors -Value 0 -Option AllScope
-Set-Variable -Name DeleteFolderErrors -Value 0 -Option AllScope
-
 Function GetSubFolders ($Folder) {
 	$IterateFolder = 0
 	$ArrayDeletedFolders = @()
@@ -431,74 +590,73 @@ Function PruneMessages {
 
 	<#  Authenticate hMailServer COM  #>
 	$hMS = New-Object -COMObject hMailServer.Application
-	$hMS.Authenticate("Administrator", $hMSAdminPass) | Out-Null
-	
-	If ($hMS.Domains.Count -gt 0) {
-		$IterateDomains = 0
-		Do {
-			$hMSDomain = $hMS.Domains.Item($IterateDomains)
-			If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch [regex]$SkipDomainPruning) -and ($hMSDomain.Accounts.Count -gt 0)) {
-				$IterateAccounts = 0
-				Do {
-					$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
-					If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch [regex]$SkipAccountPruning) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
-						$IterateIMAPFolders = 0
-						Do {
-							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
-							If ($hMSIMAPFolder.Name -match $PruneFolders) {
-								If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
-									GetSubFolders $hMSIMAPFolder
+	$AuthAdmin = $hMS.Authenticate("Administrator", $hMSAdminPass)
+
+	If ($AuthAdmin) {
+
+		<#  Set required variables if blank  #>
+		If ([string]::IsNullOrEmpty($PruneFolders)) {$PruneFolders = "deleted|spam|junk"}
+		If ([string]::IsNullOrEmpty($SkipAccountPruning)) {$SkipAccountPruning = $(-Join ((48..57) + (65..90) + (97..122) | Get-Random -Count 16 | % {[Char]$_}))}
+		If ([string]::IsNullOrEmpty($SkipDomainPruning)) {$SkipDomainPruning = $(-Join ((48..57) + (65..90) + (97..122) | Get-Random -Count 16 | % {[Char]$_}))}
+		
+		<#  Loop through IMAP folders  #>
+		If ($hMS.Domains.Count -gt 0) {
+			For ($IterateDomains = 0; $IterateDomains -lt $hMS.Domains.Count; $IterateDomains++) {
+				$hMSDomain = $hMS.Domains.Item($IterateDomains)
+				If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch [regex]$SkipDomainPruning) -and ($hMSDomain.Accounts.Count -gt 0)) {
+					For ($IterateAccounts = 0; $IterateAccounts -lt $hMSDomain.Accounts.Count; $IterateAccounts++) {
+						$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
+						If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch [regex]$SkipAccountPruning) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
+							For ($IterateIMAPFolders = 0; $IterateIMAPFolders -lt $hMSAccount.IMAPFolders.Count; $IterateIMAPFolders++) {
+								$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
+								If ($hMSIMAPFolder.Name -match $PruneFolders) {
+									If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
+										GetSubFolders $hMSIMAPFolder
+									}
+									GetMessages $hMSIMAPFolder
+								} Else {
+									GetMatchFolders $hMSIMAPFolder
 								}
-								GetMessages $hMSIMAPFolder
-							} Else {
-								GetMatchFolders $hMSIMAPFolder
 							}
-						$IterateIMAPFolders++
-						} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
+						}
 					}
-					$IterateAccounts++
-				} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
+				}
 			}
-			$IterateDomains++
-		} Until ($IterateDomains -eq $hMS.Domains.Count)
-	}
+		}
 
-	<#  Report message pruning  #>
-	If ($DeleteMessageErrors -gt 0) {
-		Debug "Finished Message Pruning : $DeleteMessageErrors Errors present"
-		Email "[ERROR] Message Pruning : $DeleteMessageErrors Errors present : Check debug log"
-	}
-	If ($TotalDeletedMessages -gt 0) {
-		Debug "Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
-		Email "[OK] Pruned $TotalDeletedMessages messages older than $DaysBeforeDelete days"
-	} Else {
-		Debug "No messages older than $DaysBeforeDelete days to prune"
-		Email "[OK] No messages older than $DaysBeforeDelete days to prune"
-	}
+		<#  Report message pruning  #>
+		If ($DeleteMessageErrors -gt 0) {
+			Debug "Finished Message Pruning : $DeleteMessageErrors Errors present"
+			Email "[ERROR] Message Pruning : $DeleteMessageErrors Errors present : Check debug log"
+		}
+		If ($TotalDeletedMessages -gt 0) {
+			Debug "Finished pruning $TotalDeletedMessages messages in $(ElapsedTime $BeginDeletingOldMessages)"
+			Email "[OK] Pruned $TotalDeletedMessages messages older than $DaysBeforeDelete days"
+		} Else {
+			Debug "No messages older than $DaysBeforeDelete days to prune"
+			Email "[OK] No messages older than $DaysBeforeDelete days to prune"
+		}
 
-	<#  Report folder pruning  #>
-	If ($DeleteFolderErrors -gt 0) {
-		Debug "Deleting Empty Folders : $DeleteFolderErrors Errors present"
-		Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Errors present : Check debug log"
-	}
-	If ($TotalDeletedFolders -gt 0) {
-		Debug "Deleted $TotalDeletedFolders empty subfolders"
-		Email "[OK] Deleted $TotalDeletedFolders empty subfolders"
+		<#  Report folder pruning  #>
+		If ($DeleteFolderErrors -gt 0) {
+			Debug "Deleting Empty Folders : $DeleteFolderErrors Errors present"
+			Email "[ERROR] Deleting Empty Folders : $DeleteFolderErrors Errors present : Check debug log"
+		}
+		If ($TotalDeletedFolders -gt 0) {
+			Debug "Deleted $TotalDeletedFolders empty subfolders"
+			Email "[OK] Deleted $TotalDeletedFolders empty subfolders"
+		} Else {
+			Debug "No empty subfolders deleted"
+			# Email "[OK] No empty subfolders deleted"
+		}
+
 	} Else {
-		Debug "No empty subfolders deleted"
-		# Email "[OK] No empty subfolders deleted"
+		Debug "[ERROR] hMailServer COM authentication failed. Check password and/or Windows Event Log."
+		Email "[ERROR] hMailServer COM authentication failed. Check password and/or Windows Event Log."
 	}
 }
 
 <#  Feed Bayes  #>
-
-Set-Variable -Name TotalHamFedMessages -Value 0 -Option AllScope
-Set-Variable -Name TotalSpamFedMessages -Value 0 -Option AllScope
-Set-Variable -Name HamFedMessageErrors -Value 0 -Option AllScope
-Set-Variable -Name SpamFedMessageErrors -Value 0 -Option AllScope
-Set-Variable -Name LearnedHamMessages -Value 0 -Option AllScope
-Set-Variable -Name LearnedSpamMessages -Value 0 -Option AllScope
-
 Function GetBayesSubFolders ($Folder) {
 	$IterateFolder = 0
 	$ArrayBayesMessages = @()
@@ -634,106 +792,116 @@ Function FeedBayes {
 
 	<#  Authenticate hMailServer COM  #>
 	$hMS = New-Object -COMObject hMailServer.Application
-	$hMS.Authenticate("Administrator", $hMSAdminPass) | Out-Null
-	
-	$SAHost = $hMS.Settings.AntiSpam.SpamAssassinHost
-	$SAPort = $hMS.Settings.AntiSpam.SpamAssassinPort
-	
-	If ($hMS.Domains.Count -gt 0) {
-		$IterateDomains = 0
-		Do {
-			$hMSDomain = $hMS.Domains.Item($IterateDomains)
-			If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch [regex]$SkipDomainBayes) -and ($hMSDomain.Accounts.Count -gt 0)) {
-				$IterateAccounts = 0
-				Do {
-					$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
-					If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch [regex]$SkipAccountBayes) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
-						$IterateIMAPFolders = 0
-						Do {
-							$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
-							If (($hMSIMAPFolder.Name -match $HamFolders) -or ($hMSIMAPFolder.Name -match $SpamFolders)) {
-								If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
-									GetBayesSubFolders $hMSIMAPFolder
+	$AuthAdmin = $hMS.Authenticate("Administrator", $hMSAdminPass)
+
+	If ($AuthAdmin) {
+
+		<#  Set SA host and port variables  #>
+		$SAHost = $hMS.Settings.AntiSpam.SpamAssassinHost
+		$SAPort = $hMS.Settings.AntiSpam.SpamAssassinPort
+		
+		<#  Set required variables if blank  #>
+		If ([string]::IsNullOrEmpty($HamFolders)) {$HamFolders = "inbox"}
+		If ([string]::IsNullOrEmpty($SpamFolders)) {$SpamFolders = "spam|junk"}
+		If ([string]::IsNullOrEmpty($SkipAccountBayes)) {$SkipAccountBayes = $(-Join ((48..57) + (65..90) + (97..122) | Get-Random -Count 16 | ForEach {[Char]$_}))}
+		If ([string]::IsNullOrEmpty($SkipDomainBayes)) {$SkipDomainBayes = $(-Join ((48..57) + (65..90) + (97..122) | Get-Random -Count 16 | ForEach {[Char]$_}))}
+		
+		<#  Loop through IMAP folders  #>
+		If ($hMS.Domains.Count -gt 0) {
+			For ($IterateDomains = 0; $IterateDomains -lt $hMS.Domains.Count; $IterateDomains++) {
+				$hMSDomain = $hMS.Domains.Item($IterateDomains)
+				If (($hMSDomain.Active) -and ($hMSDomain.Name -notmatch [regex]$SkipDomainBayes) -and ($hMSDomain.Accounts.Count -gt 0)) {
+					For ($IterateAccounts = 0; $IterateAccounts -lt $hMSDomain.Accounts.Count; $IterateAccounts++) {
+						$hMSAccount = $hMSDomain.Accounts.Item($IterateAccounts)
+						If (($hMSAccount.Active) -and ($hMSAccount.Address -notmatch [regex]$SkipAccountBayes) -and ($hMSAccount.IMAPFolders.Count -gt 0)) {
+							For ($IterateIMAPFolders = 0; $IterateIMAPFolders -lt $hMSAccount.IMAPFolders.Count; $IterateIMAPFolders++) {
+								$hMSIMAPFolder = $hMSAccount.IMAPFolders.Item($IterateIMAPFolders)
+								If (($hMSIMAPFolder.Name -match $HamFolders) -or ($hMSIMAPFolder.Name -match $SpamFolders)) {
+									If ($hMSIMAPFolder.SubFolders.Count -gt 0) {
+										GetBayesSubFolders $hMSIMAPFolder
+									}
+									GetBayesMessages $hMSIMAPFolder
+								} Else {
+									GetBayesMatchFolders $hMSIMAPFolder
 								}
-								GetBayesMessages $hMSIMAPFolder
-							} Else {
-								GetBayesMatchFolders $hMSIMAPFolder
 							}
-						$IterateIMAPFolders++
-						} Until ($IterateIMAPFolders -eq $hMSAccount.IMAPFolders.Count)
+						}
 					}
-					$IterateAccounts++
-				} Until ($IterateAccounts -eq $hMSDomain.Accounts.Count)
-			}
-			$IterateDomains++
-		} Until ($IterateDomains -eq $hMS.Domains.Count)
-	}
-
-	Debug "----------------------------"
-	Debug "Finished feeding $($TotalHamFedMessages + $TotalSpamFedMessages) messages to Bayes in $(ElapsedTime $BeginFeedingBayes)"
-	Debug "----------------------------"
-	
-	If ($HamFedMessageErrors -gt 0) {
-		Debug "Errors feeding HAM to SpamC : $HamFedMessageErrors Error$(Plural $HamFedMessageErrors) present"
-		Email "[ERROR] HAM SpamC : $HamFedMessageErrors Errors present : Check debug log"
-	}
-	If ($TotalHamFedMessages -gt 0) {
-		Debug "Bayes learned from $LearnedHamMessages of $TotalHamFedMessages HAM message$(Plural $TotalHamFedMessages) found"
-		Email "[OK] Bayes HAM from $LearnedHamMessages of $TotalHamFedMessages message$(Plural $TotalHamFedMessages)"
-	} Else {
-		Debug "No HAM messages newer than $BayesDays days to feed to Bayes"
-		Email "[OK] No HAM messages to feed Bayes"
-	}
-
-	If ($SpamFedMessageErrors -gt 0) {
-		Debug "Errors feeding SPAM to SpamC : $SpamFedMessageErrors Error$(Plural $SpamFedMessageErrors) present"
-		Email "[ERROR] SPAM SpamC : $SpamFedMessageErrors Errors present : Check debug log"
-	}
-	If ($TotalSpamFedMessages -gt 0) {
-		Debug "Bayes learned from $LearnedSpamMessages of $TotalSpamFedMessages SPAM message$(Plural $TotalSpamFedMessages) found"
-		Email "[OK] Bayes SPAM from $LearnedSpamMessages of $TotalSpamFedMessages message$(Plural $TotalSpamFedMessages)"
-	} Else {
-		Debug "No SPAM messages newer than $BayesDays days to feed to Bayes"
-		Email "[OK] No SPAM messages to feed Bayes"
-	}
-
-	If ($SyncBayesJournal) {
-		Debug "----------------------------"
-		Try {
-			$BayesSync = & cmd /c "`"$SADir\sa-learn.exe`" --sync"
-			$BayesSyncResult = Out-String -InputObject $BayesSync
-			If ([string]::IsNullOrEmpty($BayesSyncResult)) {
-				Throw "Nothing to sync"
-			}
-			Debug $BayesSyncResult
-		}
-		Catch {
-			Debug "[INFO] Bayes Journal Sync: $($Error[0])"
-		}
-	}
-
-	If ($BackupBayesDatabase) {
-		Debug "----------------------------"
-		Try {
-			If (-not(Test-Path $BayesBackupLocation)) {
-				Throw "Bayes backup file does not exist - Check Path"
-			} Else { 
-				& cmd /c "`"$SADir\sa-learn.exe`" --backup > `"$BayesBackupLocation`""
-				If ((Get-Item -Path $BayesBackupLocation).LastWriteTime -lt ((Get-Date).AddSeconds(-30))) {
-					Throw "Unknown Error backing up Bayes database"
 				}
-				Debug "Successfully backed up Bayes database"
 			}
 		}
-		Catch {
-			Debug "[ERROR] backing up Bayes : $($Error[0])"
-			Email "[ERROR] backing up Bayes db"
+
+		Debug "----------------------------"
+		Debug "Finished feeding $($TotalHamFedMessages + $TotalSpamFedMessages) messages to Bayes in $(ElapsedTime $BeginFeedingBayes)"
+		Debug "----------------------------"
+		
+		If ($HamFedMessageErrors -gt 0) {
+			Debug "Errors feeding HAM to SpamC : $HamFedMessageErrors Error$(Plural $HamFedMessageErrors) present"
+			Email "[ERROR] HAM SpamC : $HamFedMessageErrors Errors present : Check debug log"
 		}
+		If ($TotalHamFedMessages -gt 0) {
+			Debug "Bayes learned from $LearnedHamMessages of $TotalHamFedMessages HAM message$(Plural $TotalHamFedMessages) found"
+			Email "[OK] Bayes HAM from $LearnedHamMessages of $TotalHamFedMessages message$(Plural $TotalHamFedMessages)"
+		} Else {
+			Debug "No HAM messages newer than $BayesDays days to feed to Bayes"
+			Email "[OK] No HAM messages to feed Bayes"
+		}
+
+		If ($SpamFedMessageErrors -gt 0) {
+			Debug "Errors feeding SPAM to SpamC : $SpamFedMessageErrors Error$(Plural $SpamFedMessageErrors) present"
+			Email "[ERROR] SPAM SpamC : $SpamFedMessageErrors Errors present : Check debug log"
+		}
+		If ($TotalSpamFedMessages -gt 0) {
+			Debug "Bayes learned from $LearnedSpamMessages of $TotalSpamFedMessages SPAM message$(Plural $TotalSpamFedMessages) found"
+			Email "[OK] Bayes SPAM from $LearnedSpamMessages of $TotalSpamFedMessages message$(Plural $TotalSpamFedMessages)"
+		} Else {
+			Debug "No SPAM messages newer than $BayesDays days to feed to Bayes"
+			Email "[OK] No SPAM messages to feed Bayes"
+		}
+
+		If ($SyncBayesJournal) {
+			Debug "----------------------------"
+			Try {
+				$BayesSync = & cmd /c "`"$SADir\sa-learn.exe`" --sync"
+				$BayesSyncResult = Out-String -InputObject $BayesSync
+				If ([string]::IsNullOrEmpty($BayesSyncResult)) {
+					Throw "Nothing to sync"
+				}
+				Debug $BayesSyncResult
+			}
+			Catch {
+				Debug "[INFO] Bayes Journal Sync: $($Error[0])"
+			}
+		}
+
+		If ($BackupBayesDatabase) {
+			Debug "----------------------------"
+			Try {
+				If (-not(Test-Path $BayesBackupLocation)) {
+					Throw "Bayes backup file does not exist - Check Path"
+				} Else { 
+					& cmd /c "`"$SADir\sa-learn.exe`" --backup > `"$BayesBackupLocation`""
+					If ((Get-Item -Path $BayesBackupLocation).LastWriteTime -lt ((Get-Date).AddSeconds(-30))) {
+						Throw "Unknown Error backing up Bayes database"
+					}
+					Debug "Successfully backed up Bayes database"
+				}
+			}
+			Catch {
+				Debug "[ERROR] backing up Bayes : $($Error[0])"
+				Email "[ERROR] backing up Bayes db"
+			}
+		}
+
+
+	} Else {
+		Debug "[ERROR] hMailServer COM authentication failed. Check password and/or Windows Event Log."
+		Email "[ERROR] hMailServer COM authentication failed. Check password and/or Windows Event Log."
 	}
+
 }
 
 <#  Offsite upload function  #>
-
 Function OffsiteUpload {
 
 	$BeginOffsiteUpload = Get-Date
@@ -962,7 +1130,6 @@ Function OffsiteUpload {
 }
 
 <#  Check for updates  #>
-
 Function CheckForUpdates {
 	Debug "----------------------------"
 	Debug "Checking for script update at GitHub"
