@@ -87,14 +87,15 @@ Function ValidateFolders ($Folder) {
  
 Function ElapsedTime ($EndTime) {
 	$TimeSpan = New-Timespan $EndTime
-	If (([int]($TimeSpan).Hours) -eq 0) {$Hours = ""} ElseIf (([int]($TimeSpan).Hours) -eq 1) {$Hours = "1 hour "} Else {$Hours = "$([int]($TimeSpan).Hours) hours "}
-	If (([int]($TimeSpan).Minutes) -eq 0) {$Minutes = ""} ElseIf (([int]($TimeSpan).Minutes) -eq 1) {$Minutes = "1 minute "} Else {$Minutes = "$([int]($TimeSpan).Minutes) minutes "}
-	If (([int]($TimeSpan).Seconds) -eq 1) {$Seconds = "1 second"} Else {$Seconds = "$([int]($TimeSpan).Seconds) seconds"}
+	If (([math]::Floor(($TimeSpan).Days)) -eq 0) {$Days = ""} ElseIf (([math]::Floor(($TimeSpan).Days)) -eq 1) {$Days = "1 day "} Else {$Days = "$([math]::Floor(($TimeSpan).Days)) days "}
+	If (([math]::Floor(($TimeSpan).Hours)) -eq 0) {$Hours = ""} ElseIf (([math]::Floor(($TimeSpan).Hours)) -eq 1) {$Hours = "1 hour "} Else {$Hours = "$([math]::Floor(($TimeSpan).Hours)) hours "}
+	If (([math]::Floor(($TimeSpan).Minutes)) -eq 0) {$Minutes = ""} ElseIf (([math]::Floor(($TimeSpan).Minutes)) -eq 1) {$Minutes = "1 minute "} Else {$Minutes = "$([math]::Floor(($TimeSpan).Minutes)) minutes "}
+	If (([math]::Floor(($TimeSpan).Seconds)) -eq 1) {$Seconds = "1 second"} Else {$Seconds = "$([math]::Floor(($TimeSpan).Seconds)) seconds"}
 	
 	If (($TimeSpan).TotalSeconds -lt 1) {
 		$Return = "less than 1 second"
 	} Else {
-		$Return = "$Hours$Minutes$Seconds"
+		$Return = "$Days$Hours$Minutes$Seconds"
 	}
 	Return $Return
 }
