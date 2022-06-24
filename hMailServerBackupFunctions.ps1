@@ -889,8 +889,8 @@ Function FeedBayes {
 				}
 			}
 			Catch {
-				Debug "[ERROR] backing up Bayes : $($Error[0])"
-				Email "[ERROR] backing up Bayes db"
+				Debug "[ERROR] Backing up Bayes : $($Error[0])"
+				Email "[ERROR] Backing up Bayes db"
 			}
 		}
 

@@ -108,10 +108,8 @@ $BootTime = [DateTime]::ParseExact((((Get-WmiObject -Class win32_operatingsystem
 $hMSStartTime = $hMS.Status.StartTime
 $hMSSpamCount = $hMS.Status.RemovedSpamMessages
 $hMSVirusCount = $hMS.Status.RemovedViruses
-Debug "Last Reboot Time          : $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss'))"
-Debug "Server Uptime             : $(ElapsedTime (($BootTime).ToString('yyyy-MM-dd HH:mm:ss')))"
-Debug "HMS Start Time            : $hMSStartTime"
-Debug "HMS Uptime                : $(ElapsedTime $hMSStartTime)"
+Debug "Last Reboot Time          : $(($BootTime).ToString('yyyy-MM-dd HH:mm:ss')) ($(ElapsedTime $BootTime))"
+Debug "HMS Start Time            : $hMSStartTime ($(ElapsedTime $hMSStartTime))"
 Debug "HMS Daily Spam Reject     : $hMSSpamCount"
 Debug "HMS Daily Viruses Removed : $hMSVirusCount"
 If ($UseHTML) {
