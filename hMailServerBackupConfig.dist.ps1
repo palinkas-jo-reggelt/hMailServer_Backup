@@ -27,8 +27,9 @@ $VerboseFile           = $True                  # If true, will output debug to 
 <###   DATA DIR BACKUP   ###>
 $BackupDataDir         = $True                  # If true, will backup data dir via robocopy
 
-<###   MISCELLANEOUS BACKUP FILES   ###>        # Array of additional miscellaneous files to backup - Use full path
-$MiscBackupFiles       = @(
+<###   MISCELLANEOUS BACKUP FILES   ###>
+$BackupMisc            = $True                  # True will backup misc files listed below
+$MiscBackupFiles       = @(                     # Array of additional miscellaneous files to backup (use full path)
 	"C:\hMailServer\Bin\hMailServer.INI"
 	"C:\hMailServer\Events\EventHandlers.vbs"
 	"C:\Program Files\JAM Software\SpamAssassin for Windows\etc\spamassassin\local.cf"

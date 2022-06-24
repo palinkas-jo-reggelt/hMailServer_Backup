@@ -161,7 +161,6 @@ If ($BackupDataDir) {BackuphMailDataDir}
 If ($BackupDB) {BackupDatabases}
 
 <#  Backup Miscellaneous Files  #>
-$MiscBackupSuccess = 0
 If ($BackupMisc) {BackupMiscellaneousFiles}
 
 <#  Report backup success  #>

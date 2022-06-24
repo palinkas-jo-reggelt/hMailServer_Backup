@@ -311,6 +311,7 @@ Function BackupDatabases {
 Function BackupMiscellaneousFiles {
 	Debug "----------------------------"
 	Debug "Begin backing up miscellaneous files"
+	$MiscBackupSuccess = 0
 	$MiscBackupFiles | ForEach {
 		$MBUF = $_
 		$MBUFName = Split-Path -Path $MBUF -Leaf
