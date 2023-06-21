@@ -154,6 +154,9 @@ If ($UseSA) {UpdateSpamassassin}
 <#  Update Custom Rulesets  #>
 If ($UseSA) {If ($UseCustomRuleSets) {UpdateCustomRulesets}}
 
+<#  Update OpenPhish database files  #>
+If ($UseSA) {If ($UseOpenPhish) {DownloadPhishFiles}}
+
 <#  Backup files using RoboCopy  #>
 If ($BackupDataDir) {BackuphMailDataDir}
 

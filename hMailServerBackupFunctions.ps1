@@ -224,6 +224,49 @@ Function UpdateCustomRulesets {
 	}
 }
 
+<#  Update OpenPhish database files  #>
+Function DownloadPhishFiles {
+	Debug "----------------------------"
+	Debug "Start downloading OpenPhish databases"
+	$BeginOpenPhish = Get-Date
+	$PhishUpdateSuccess = 0
+	ForEach($Source in $PhishFiles.Keys){
+		$FileName = $(([System.IO.DirectoryInfo]$PhishFiles[$Source]).Name)
+		$TempFile = "$BackupTempDir\$FileName"
+		Try {
+			& cmd /C wget --tries=3 -q -U "phishtank/downloader" -O $TempFile $Source
+			If ($LastExitCode -ne 0) {Throw "[ERROR] Error downloading file $Source"}
+			Debug "Successfully downloaded file $Source"
+			Copy-Item $TempFile -Destination $PhishFiles[$Source] -Force
+			Remove-Item $TempFile -Force
+			$PhishUpdateSuccess++
+		}
+		Catch {
+			Debug $($Error[0])
+			Switch ($LastExitCode) {
+				0{Debug "[ERROR] No problems occurred."}
+				1{Debug "[ERROR] Generic error code."}
+				2{Debug "[ERROR] Parse error---for instance, when parsing command-line options, the .wgetrc or .netrc..."}
+				3{Debug "[ERROR] File I/O error."}
+				4{Debug "[ERROR] Network failure."}
+				5{Debug "[ERROR] SSL verification failure."}
+				6{Debug "[ERROR] Username/password authentication failure."}
+				7{Debug "[ERROR] Protocol errors."}
+				8{Debug "[ERROR] Server issued an error response."}
+			}
+		}
+	}
+	<#  Report Misc Backup Success  #>
+	If ($PhishUpdateSuccess -eq $PhishFiles.Count) {
+		Debug "All $($PhishFiles.Count) OpenPhish files successfully downloaded in $(ElapsedTime $BeginOpenPhish)"
+		Email "[OK] $($PhishFiles.Count) OpenPhish files updated"
+	} Else {
+		Debug "[ERROR] Failed to download $($PhishFiles.Count - $MiscBackupSuccess) of $($PhishFiles.Count) OpenPhish files"
+		Debug "Finished updating OpenPhish files in $(ElapsedTime $BeginOpenPhish)"
+		Email "[ERROR] Updating $($PhishFiles.Count - $MiscBackupSuccess) OpenPhish files unsuccessful : Check debug log"
+	}
+}
+
 <#  Backup hMailServer data dir function  #>
 Function BackuphMailDataDir {
 	$DoBackupDataDir++
@@ -262,21 +305,23 @@ Function BackupDatabases {
 		$DoBackupDB++
 		Debug "----------------------------"
 		Debug "Begin backing up MySQL"
-		If (Test-Path "$BackupTempDir\hMailData\MYSQLDump_*.sql") {
-			Get-ChildItem "$BackupTempDir\hMailData" | Where {$_.Extension -match "sql"} | ForEach {$OldMySQLDump = $_.Name}
-			Debug "Deleting old MySQL database dump"
-			Try {
-				Remove-Item "$BackupTempDir\hMailData\*.sql"
-				Debug "$OldMySQLDump database successfully deleted"
-			}
-			Catch {
-				Debug "[ERROR] Old MySQL database delete : $($Error[0])"
-				Email "[ERROR] Old MySQL database delete : Check Debug Log"
+		If (Test-Path "$MailDataDir\MYSQLDump_*.sql") {
+			Get-ChildItem "$MailDataDir" | Where {$_.Extension -match "sql"} | ForEach {
+				$OldMySQLDump = $_.Name
+				Debug "Deleting old MySQL database dump : $OldMySQLDump"
+				Try {
+					Remove-Item "$MailDataDir\$OldMySQLDump" -ErrorAction Stop
+					Debug "$OldMySQLDump database successfully deleted"
+				}
+				Catch {
+					Debug "[ERROR] Old MySQL database delete : $($Error[0])"
+					Email "[ERROR] Old MySQL database delete : Check Debug Log"
+				}
 			}
 		}
 		$MySQLDump = "$MySQLBINdir\mysqldump.exe"
 		$MySQLDumpPass = "-p$MySQLPass"
-		$MySQLDumpFile = "$BackupTempDir\hMailData\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).sql"
+		[System.IO.FileInfo]$MySQLDumpFile = "$MailDataDir\MYSQLDump_$((Get-Date).ToString('yyyy-MM-dd')).sql"
 		Try {
 			If ($BackupAllMySQLDatbase) {
 				& $MySQLDump -u $MySQLUser $MySQLDumpPass --all-databases --result-file=$MySQLDumpFile
@@ -284,7 +329,7 @@ Function BackupDatabases {
 				& $MySQLDump -u $MySQLUser $MySQLDumpPass $MySQLDatabase --result-file=$MySQLDumpFile
 			}
 			$BackupSuccess++
-			Debug "MySQL successfully dumped in $(ElapsedTime $BeginDBBackup)"
+			Debug "MySQL successfully dumped $($MySQLDumpFile.Name) in $(ElapsedTime $BeginDBBackup)"
 		}
 		Catch {
 			Debug "[ERROR] MySQL Dump : $($Error[0])"
