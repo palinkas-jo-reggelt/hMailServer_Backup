@@ -4,8 +4,8 @@
  Discussion thread: https://hmailserver.com/forum/viewtopic.php?f=9&t=35447
 
 # NEW
- OpenPhish database files updater. New variables added to config. 
- See topic for further info: https://hmailserver.com/forum/viewtopic.php?t=40295
+ OpenPhish database files updater. New variables added to config.  
+ See topic for further info: https://hmailserver.com/forum/viewtopic.php?t=40295  
  
 # What does it do?
  1) Stops hMailServer and SpamAssassin Services
@@ -25,13 +25,13 @@
  15) Sends email with debug log attached
 
 # Requirements
- Working hMailServer using either internal database or MySQL
- If using SpamAssassin, must configure service for --allow-tell in order to feed spamc
- OpenPhish update requires WGET in the system path
+ Working hMailServer using either internal database or MySQL  
+ If using SpamAssassin, must configure service for --allow-tell in order to feed spamc  
+ OpenPhish update requires WGET in the system path  
 
 # Instructions
- Create account at LetsUpload.io and create API keys
- Fill in variables in hMailServerBackupConfig.ps1.dist and rename to hMailServerBackupConfig.ps1
- Run hMailServerBackup.ps1 from task scheduler at 11:58 PM (time allows for properly cycling logs)
+ Create account at LetsUpload.io and create API keys  
+ Fill in variables in hMailServerBackupConfig.ps1.dist and rename to hMailServerBackupConfig.ps1  
+ Run hMailServerBackup.ps1 from task scheduler at 11:58 PM (time allows for properly cycling logs)  
  
 # Notes
