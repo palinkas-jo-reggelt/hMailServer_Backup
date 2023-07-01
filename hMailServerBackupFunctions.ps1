@@ -261,9 +261,9 @@ Function DownloadPhishFiles {
 		Debug "All $($PhishFiles.Count) OpenPhish files successfully downloaded in $(ElapsedTime $BeginOpenPhish)"
 		Email "[OK] $($PhishFiles.Count) OpenPhish files updated"
 	} Else {
-		Debug "[ERROR] Failed to download $($PhishFiles.Count - $MiscBackupSuccess) of $($PhishFiles.Count) OpenPhish files"
+		Debug "[ERROR] Failed to download $($PhishFiles.Count - $PhishUpdateSuccess) of $($PhishFiles.Count) OpenPhish files"
 		Debug "Finished updating OpenPhish files in $(ElapsedTime $BeginOpenPhish)"
-		Email "[ERROR] Updating $($PhishFiles.Count - $MiscBackupSuccess) OpenPhish files unsuccessful : Check debug log"
+		Email "[ERROR] $($PhishFiles.Count - $PhishUpdateSuccess) OpenPhish files failed to download : Check debug log"
 	}
 }
 
