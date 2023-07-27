@@ -59,9 +59,9 @@ $SACustomRules         = @(                     # URLs of custom rulesets
 $UseOpenPhish          = $True                  # Specifies whether to update OpenPhish databases - for use with Phishing plugin for SA - requires wget in the system path
 $PhishFiles            = @{
 	"https://data.phishtank.com/data/online-valid.csv" = "$SAConfDir\phishtank-feed.csv"
-	"https://openphish.com/feed.txt" = "$SAConfDir\openphish-feed.txt"
 	"https://phishstats.info/phish_score.csv" = "$SAConfDir\phishstats-feed.csv" 
 }
+	# "https://openphish.com/feed.txt" = "$SAConfDir\openphish-feed.txt" #OpenPhish is dead.
 
 <###   WINDOWS SERVICE VARIABLES   ###>
 $hMSServiceName        = "hMailServer"          # Name of hMailServer Service (check windows services to verify exact spelling)
