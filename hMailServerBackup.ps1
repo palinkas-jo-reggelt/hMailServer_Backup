@@ -197,9 +197,6 @@ If ($UseSA) {If ($FeedBayes) {FeedBayes}}
 <#  Compress backup into 7z archives  #>
 If ($UseSevenZip) {MakeArchive}
 
-<#  Upload archive to LetsUpload.io  #>
-If ($UseLetsUpload) {OffsiteUpload}
-
 <#  Check for updates  #>
 CheckForUpdates
 

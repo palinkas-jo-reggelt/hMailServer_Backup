@@ -59,9 +59,9 @@ $SACustomRules         = @(                     # URLs of custom rulesets
 $UseOpenPhish          = $True                  # Specifies whether to update OpenPhish databases - for use with Phishing plugin for SA - requires wget in the system path
 $PhishFiles            = @{
 	"https://data.phishtank.com/data/online-valid.csv" = "$SAConfDir\phishtank-feed.csv"
-	"https://phishstats.info/phish_score.csv" = "$SAConfDir\phishstats-feed.csv" 
+	"https://openphish.com/feed.txt" = "$SAConfDir\openphish-feed.txt"
 }
-	# "https://openphish.com/feed.txt" = "$SAConfDir\openphish-feed.txt" #OpenPhish is dead.
+	# "https://phishstats.info/phish_score.csv" = "$SAConfDir\phishstats-feed.csv" #OpenPhish is dead.
 
 <###   WINDOWS SERVICE VARIABLES   ###>
 $hMSServiceName        = "hMailServer"          # Name of hMailServer Service (check windows services to verify exact spelling)
@@ -109,13 +109,6 @@ $UseSevenZip           = $True                  # True will compress backup file
 $PWProtectedArchive    = $True                  # False = no-password zip archive, True = AES-256 encrypted multi-volume 7z archive
 $VolumeSize            = "100m"                 # Size of archive volume parts - maximum 200m recommended - valid suffixes for size units are (b|k|m|g)
 $ArchivePassword       = "supersecretpassword"  # Password to 7z archive
-
-<###   LETSUPLOAD API VARIABLES   ###>
-$UseLetsUpload         = $True                  # True will run upload routine
-$APIKey1               = "BYMDFZkQpzaj1DZpTHgQx48CLWZZSF5teG61FYJrVSLsGkwBiB2EGCaBkTCJLpoB"  # Get key from letsupload.io
-$APIKey2               = "qm7gQH6xiUA42HkTwEMauWYOb16lfXMbkmg6aWNzlO0dLtny95bCSRIrFTyyYOEP"  # Get key from letsupload.io
-$IsPublic              = 0                      # 0 = Private, 1 = Unlisted, 2 = Public in site search
-$MaxUploadTries        = 5                      # Maximum number of upload tries before giving up
 
 <###   HMAILSERVER LOG VARIABLES   ###>
 $PruneLogs             = $True                  # If true, will delete logs in hMailServer \Logs folder older than N days
