@@ -1,12 +1,15 @@
 # hMailServer Offsite Backup
- hMailServer backup routine that also uploads to LetsUpload.io
+ hMailServer backup routine with extras
  
  Discussion thread: https://hmailserver.com/forum/viewtopic.php?f=9&t=35447
 
 # NEW
  OpenPhish database files updater. New variables added to config.  
  See topic for further info: https://hmailserver.com/forum/viewtopic.php?t=40295  
- 
+
+ Removed offsite upload to letsupload.io because they are now defunct
+
+
 # What does it do?
  1) Stops hMailServer and SpamAssassin Services
  2) Updates SpamAssassin
@@ -21,8 +24,7 @@
  11) Prunes hMailServer logs older than specified number of days
  12) Prunes local backup copies older than specified number of days
  13) Compresses the backup directory into a multi-volume 7z archive with AES-256 encryption (including header encyrption)
- 14) Creates a folder at LetsUpload.io and uploads the archive files
- 15) Sends email with debug log attached
+ 14) Sends email with debug log attached
 
 # Requirements
  Working hMailServer using either internal database or MySQL  
